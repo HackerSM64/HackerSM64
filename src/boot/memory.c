@@ -10,11 +10,15 @@
 #include "segment_symbols.h"
 #include "segments.h"
 #ifdef GZIP
-#include <gzip.h>
+#include "aplib.h"
+#endif
+#ifdef RNC1
+#include "shrinkler.h"
 #endif
 #if defined(RNC1) || defined(RNC2)
 #include <rnc.h>
 #endif
+
 #ifdef UNF
 #include "usb/usb.h"
 #include "usb/debug.h"
@@ -376,35 +380,70 @@ void *load_segment_decompress(s32 segment, u8 *srcStart, u8 *srcEnd) {
     void *dest = NULL;
 
 #ifdef GZIP
-    u32 compSize = (srcEnd - 4 - srcStart);
+    u32 compSize = ALIGN16(srcEnd - srcStart + 8);
+#elif defined(RNC1)
 #else
     u32 compSize = ALIGN16(srcEnd - srcStart);
 #endif
+
+#ifndef RNC1
     u8 *compressed = main_pool_alloc(compSize, MEMORY_POOL_RIGHT);
+#endif
 #ifdef GZIP
-    // Decompressed size from end of gzip
-    u32 *size = (u32 *) (compressed + compSize);
+    struct {
+        u32 destLength;
+        u32 bufferLength;
+        u64 padding;
+    } ApLibHeader;
+
+    dma_read((u8*)&ApLibHeader, srcStart, srcStart + 16); // We must extract this data from the header
+    u32 *size = &ApLibHeader.destLength;
+#elif defined(RNC1)
+    struct {
+        s8 magic[4];
+        s8 majorVersion;
+        s8 minorVersion;
+        u16 headerSize;
+        u32 compressedSize;
+        u32 uncompressedSize;
+        u32 safetyMargin;
+        u32 flags;
+        u64 pad; // Alignment
+    } ShrinklerHeader;
+    dma_read((u8*)&ShrinklerHeader, srcStart, srcStart + sizeof(ShrinklerHeader)); // We must extract this data from the header
+    u32 *size = &ShrinklerHeader.uncompressedSize;
+    u32 compSize = ShrinklerHeader.compressedSize;
+    u8 *compressed = main_pool_alloc(compSize, MEMORY_POOL_RIGHT);
+    osSyncPrintf("Segment size: %u", ShrinklerHeader.uncompressedSize);
 #else
     // Decompressed size from header (This works for non-mio0 because they also have the size in same place)
     u32 *size = (u32 *) (compressed + 4);
 #endif
     if (compressed != NULL) {
+
 #ifdef UNCOMPRESSED
         dest = main_pool_alloc(compSize, MEMORY_POOL_LEFT);
         dma_read(dest, srcStart, srcEnd);
+#elif defined(GZIP)
+        dma_read(compressed, srcStart + 8, srcEnd);
+        dest = main_pool_alloc(*size, MEMORY_POOL_LEFT);
+#elif defined(RNC1)
+        dma_read(compressed, srcStart + sizeof(ShrinklerHeader), srcEnd);
+        dest = main_pool_alloc(*size, MEMORY_POOL_LEFT);
 #else
         dma_read(compressed, srcStart, srcEnd);
         dest = main_pool_alloc(*size, MEMORY_POOL_LEFT);
 #endif
-        if (dest != NULL) {
+
+	if (dest != NULL) {
             osSyncPrintf("start decompress\n");
 #ifdef GZIP
-            expand_gzip(compressed, dest, compSize, (u32)size);
+            decompress_aplib_full_fast(compressed, srcEnd - srcStart - 8, dest);
 #elif RNC1
-            Propack_UnpackM1(compressed, dest);
+            decompress_shrinkler_full_fast(compressed, ShrinklerHeader.compressedSize, dest, *size);
 #elif RNC2
             Propack_UnpackM2(compressed, dest);
-#elif YAY0
+#elif YAZ0
             slidstart(compressed, dest);
 #elif MIO0
             decompress(compressed, dest);

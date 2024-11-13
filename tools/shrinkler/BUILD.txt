@@ -1,0 +1,35 @@
+
+To build Shrinkler natively for your unix-like system, type
+
+make
+
+You can cross-build for a particular target using
+
+make PLATFORM=<platform>
+
+where <platform> is one of:
+
+amiga:      build for Amiga (build on Cygwin, and see below)
+windows-32: build for 32-bit Windows (build on Cygwin)
+windows-64: build for 64-bit Windows (build on Cygwin)
+native:     same as default
+native-32:  native, forced to 32 bits
+native-64:  native, forced to 64 bits
+
+To build for Amiga, you will first need to download a few things:
+
+Download
+http://amiga.sourceforge.net/phps/logger.php?download=GCC-4.5.0-m68k-amigaos-cygwin.7z
+and unpack it to the toolchain directory.
+
+Download
+http://sourceforge.net/projects/amiga/files/Compilers/related/include-20090222.lha
+and unpack it to the toolchain directory.
+
+Create the directory toolchain/ixemul-sdk, download
+http://sourceforge.net/projects/amiga/files/ixemul.library/48.2/ixemul-sdk.lha
+and unpack it to the directory you just created.
+
+The Amiga version will need ixemul.library version 48 or later to run.
+
+Enjoy!

@@ -23,14 +23,15 @@ This is a fork of the ultrasm64 repo by CrashOveride which includes the followin
 - **JoshDuMan**: Decomp guy, general assistance
 - **Arceveti**: Silhouette, shadow optimisation, better hanging, breath meter, 4 controller support
 - **axollyon**: Console testing, bugfixes, idea-guying, and had a hand in silhouettes
-- **Wiseguy**:  World scale reimplementation, silhouette, graph node optimisations, instant input patch, cake screen fix, segmented code support, and various optimizations/fixes
+- **Wiseguy**:  World scale reimplementation, silhouette, graph node optimisations, instant input patch, cake screen fix, segmented code support, YAZ0 compressor, and various optimizations/fixes
 - **Kaze**: Graph node optimisations, automatic optimal collision distance
 - **Pyro Jay**: Texture improvements, repo banner art, some QoL stuff
 - **CrashOveride**: creating the [ultrasm64](https://github.com/CrashOveride95/ultrasm64) repo
 - **falcobuster**: Original coordinate overflow fix (world scale), ASM version of extended bounds, emulator detector
 - **anonymous_moose**: porting falco's extended bounds to decomp
 - **tuxlovesyou**: `LOAD_MIO0_TEXTURE` macro and moral support
-- **devwizard**: the PJ64 pre-v3.0 detection part of the emulator detector
+- **devwizard**: the PJ64 pre-v3.0 detection part of the emulator detector, YAZ0 decompressor
+- **Rasky**: Writing the libdragon decompressors used in in this repository (LZ4, aplib, shrinkler), and general N64 support.
 
 Thanks to Frame#5375 and AloXado320 for also helping with silhouette stuff
 
@@ -168,30 +169,14 @@ To target iQue, run make with the ``CONSOLE=bb`` argument.
 
 ## Compression
 
-The repo also supports RNC (Rob Northen Compression). RNC has two methods.
+This repository supports four levels of compression, taken from the libdragon project:
 
-Method 1 is designed to compress as small as possible, while method 2 is designed so that decompression is as fast as possible.
+1. `uncomp` - No compression. No compression. Not very viable outside of very unusual cases, as YAZ0 will load faster.
+2. `lz4` - The fastest level of compression. Use this for situations where load times are absolutely critical.
+3. `aplib` - Uses the aPLib (apultra) compression algorithm. Nearly 1:1 on speed with the now former YAY0 option, while compressing better than the formerly available gzip and RNC options. **This is the default.**
+4. `shrinkler` - The slowest option, with the absolute best compression ratio. Use this only if you are approaching a file size limit, **as it is very slow**.
 
-Method 1 is the current default, and is the best all-rounder in terms of speed and ratio.
-
-Both methods are fast. Method 1 has better compression than 2, so I suggest using method 1 if using RNC.
-
-To switch to RNC, run make with either ``COMPRESS=rnc1`` or ``COMPRESS=rnc2``, depending on preferred method.
-
-The repository also supports using DEFLATE compression. This boasts a better compression ratio, but at a slight cost to load times.
-On average I'd estimate that the bottleneck on decompression is about 1-2 seconds.
-
-To switch to gzip, run make with the ``COMPRESS=gzip`` argument.
-
-The repo also supports gziping with ``libdeflate-gzip``. This compresses at a slightly better ratio than standard ``gzip``, with no real downside from a decompression standpoint.
-
-To use ``libdeflate-gzip``, first clone the [repo](https://github.com/ebiggers/libdeflate), then `make` and `make install` it.
-
-Then run make for sm64 with ``GZIPVER=libdef`` in addition to ``COMPRESS=gzip``
-
-The repo also supports building a ROM with no compression.
-This is not recommended as it increases ROM size significantly, with little point other than load times decreased to almost nothing.
-To switch to no compression, run make with the ``COMPRESS=uncomp`` argument.
+As previously noted, the rnc1, rnc2, and gzip options are entirely removed now as they have been obsoleted by the more robust options above. The new options are both faster and compress with higher compression ratios, with zero downsides. The supporting code is also now much smaller.
 
 ## FAQ
 

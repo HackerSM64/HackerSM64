@@ -46,12 +46,12 @@ SEG_FILES := \
     $(ACTOR_GROUPS:%=$(BUILD_DIR)/actors/%.elf) \
     $(LEVEL_FILES:%=$(BUILD_DIR)/levels/%.elf)
 
-YAY0_FILES := \
+YAZ0_FILES := \
     $(SEGMENTS:%=$(BUILD_DIR)/bin/%.szp) \
     $(ACTOR_GROUPS:%=$(BUILD_DIR)/actors/%.szp) \
     $(LEVEL_FILES:%=$(BUILD_DIR)/levels/%.szp)
 
-YAY0_OBJ_FILES := $(YAY0_FILES:.szp=.szp.o)
+YAZ0_OBJ_FILES := $(YAZ0_FILES:.szp=.szp.o)
 
 
 # --------------------------------------
