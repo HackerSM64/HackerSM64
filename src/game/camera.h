@@ -8,17 +8,57 @@
 #include "engine/geo_layout.h"
 #include "engine/graph_node.h"
 #include "puppycam2.h"
+#include "camera/camera_geo.h"
 
 #include "level_table.h"
-
-// X position of the mirror
-#define CASTLE_MIRROR_X 4331.53f
 
 /**
  * @file camera.h
  * Constants, defines, and structs used by the camera system.
- * @see camera.c
+ * 
+ * When working with the camera, you should be familiar with sm64's coordinate system.
+ * Relative to the camera, the coordinate system follows the right hand rule:
+ *          +X points right.
+ *          +Y points up.
+ *          +Z points out of the screen.
+ *
+ * You should also be familiar with Euler angles: 'pitch', 'yaw', and 'roll'.
+ *      pitch: rotation about the X-axis, measured from +Y.
+ *          Unlike yaw and roll, pitch is bounded in +-0x4000 (90 degrees).
+ *          Pitch is 0 when the camera points parallel to the xz-plane (+Y points straight up).
+ *
+ *      yaw: rotation about the Y-axis, measured from (absolute) +Z.
+ *          Positive yaw rotates clockwise, towards +X.
+ *
+ *      roll: rotation about the Z-axis, measured from the camera's right direction.
+ *          Unfortunately, it's weird: For some reason, roll is flipped. Positive roll makes the camera
+ *          rotate counterclockwise, which means the WORLD rotates clockwise. Luckily roll is rarely
+ *          used.
+ *
+ *      Remember the right hand rule: make a thumbs-up with your right hand, stick your thumb in the
+ *      +direction (except for roll), and the angle follows the rotation of your curled fingers.
+ *
+ * Illustrations:
+ * Following the right hand rule, each hidden axis's positive direction points out of the screen.
+ *
+ *       YZ-Plane (pitch)        XZ-Plane (yaw)          XY-Plane (roll -- Note flipped)
+ *          +Y                      -Z                      +Y
+ *           ^                       ^ (into the             ^
+ *         --|--                     |   screen)             |<-
+ * +pitch /  |  \ -pitch             |                       |  \ -roll
+ *       v   |   v                   |                       |   |
+ * +Z <------O------> -Z   -X <------O------> +X   -X <------O------> +X
+ *           |                   ^   |   ^                   |   |
+ *           |                    \  |  /                    |  / +roll
+ *           |               -yaw  --|--  +yaw               |<-
+ *           v                       v                       v
+ *          -Y                      +Z                      -Y
+ *
  */
+
+
+// X position of the mirror
+#define CASTLE_MIRROR_X 4331.53f
 
 #ifndef ABS2
 #define ABS2(x) ((x) >= 0.f ? (x) : -(x))
@@ -312,6 +352,7 @@ enum CameraDoor {
 };
 
 // Might rename these to reflect what they are used for instead "SET_45" etc.
+// TODO: to camera_geo
 enum CameraFov {
     CAM_FOV_NONE,
     CAM_FOV_SET_45,
@@ -405,14 +446,6 @@ struct HandheldShakePoint {
  * These are concurrent: multiple CameraEvents can occur on the same frame.
  */
 typedef void (*CameraEvent)(struct Camera *c);
-/**
- * The same type as a CameraEvent, but because these are generally longer, and happen in sequential
- * order, they're are called "shots," a term taken from cinematography.
- *
- * To further tell the difference: CutsceneShots usually call multiple CameraEvents at once, but only
- * one CutsceneShot is ever called on a given frame.
- */
-typedef CameraEvent CutsceneShot;
 
 /**
  * Defines a bounding box which activates an event while Mario is inside
@@ -442,18 +475,8 @@ struct CameraTrigger {
 };
 
 /**
- * A camera shot that is active for a number of frames.
- * Together, a sequence of shots makes up a cutscene.
- */
-struct Cutscene {
-    /// The function that gets called.
-    CutsceneShot shot;
-    /// How long the shot lasts.
-    s16 duration;
-};
-
-/**
  * Info for the camera's field of view and the FOV shake effect.
+ * TODO: to camera_geo
  */
 struct CameraFOVStatus {
     /// The current function being used to set the camera's field of view (before any fov shake is applied).
@@ -531,20 +554,6 @@ struct ModeTransitionInfo {
     s16 frame;
     struct LinearTransitionPoint transitionStart;
     struct LinearTransitionPoint transitionEnd;
-};
-
-/**
- * A point in a path used by update_parallel_tracking_camera
- */
-struct ParallelTrackingPoint {
-    /// Whether this point is the start of a path
-    s16 startOfPath;
-    /// Point used to define a line segment to follow
-    Vec3f pos;
-    /// The distance Mario can move along the line before the camera should move
-    f32 distThresh;
-    /// The percentage that the camera should move from the line to Mario
-    f32 zoom;
 };
 
 /**
@@ -636,14 +645,10 @@ struct LakituState {
      */
     /*0x24*/ Vec3f goalPos;
 
-    /*0x30*/ u8 filler1[12]; // extra unused Vec3f?
-
     /// Copy of the active camera mode
     /*0x3C*/ u8 mode;
     /// Copy of the default camera mode
     /*0x3D*/ u8 defMode;
-
-    /*0x3E*/ u8 filler2[10];
 
     /*0x48*/ f32 focusDistance; // unused
     /*0x4C*/ s16 oldPitch; // unused
@@ -659,10 +664,6 @@ struct LakituState {
     /*0x58*/ s16 shakePitchPhase;
     /*0x5A*/ s16 shakePitchVel;
     /*0x5C*/ s16 shakePitchDecay;
-
-    /*0x60*/ Vec3f unusedVec1;
-    /*0x6C*/ Vec3s unusedVec2;
-    /*0x72*/ u8 filler3[8];
 
     /// Used to rotate the screen when rendering.
     /*0x7A*/ s16 roll;
@@ -698,10 +699,8 @@ struct LakituState {
     /*0xB4*/ s16 keyDanceRoll;
     /// Mario's action from the previous frame. Only used to determine if Mario just finished a dive.
     /*0xB8*/ u32 lastFrameAction;
-    /*0xBC*/ s16 unused;
 };
 
-// BSS
 extern s16 sSelectionFlags;
 extern s16 sCameraSoundFlags;
 extern u16 sCButtonsPressed;
@@ -710,54 +709,29 @@ extern struct LakituState gLakituState;
 extern s16 gCameraMovementFlags;
 extern s32 gObjCutsceneDone;
 extern struct Camera *gCamera;
-extern struct Object *gCutsceneFocus;
 extern struct Object *gSecondCameraFocus;
-extern u8 gRecentCutscene;
 
 // TODO: sort all of this extremely messy shit out after the split
 
-void set_camera_shake_from_hit(s16 shake);
-void set_environmental_camera_shake(s16 shake);
-void set_camera_shake_from_point(s16 shake, f32 posX, f32 posY, f32 posZ);
-void move_mario_head_c_up(UNUSED struct Camera *c);
 void transition_next_state(UNUSED struct Camera *c, s16 frames);
-void set_camera_mode(struct Camera *c, s16 mode, s16 frames);
 void update_camera(struct Camera *c);
 void reset_camera(struct Camera *c);
 void init_camera(struct Camera *c);
 void select_mario_cam_mode(void);
-Gfx *geo_camera_main(s32 callContext, struct GraphNode *g, void *context);
 void object_pos_to_vec3f(Vec3f dst, struct Object *obj);
 void vec3f_to_object_pos(struct Object *obj, Vec3f src);
-s32 move_point_along_spline(Vec3f p, struct CutsceneSplinePoint spline[], s16 *splineSegment, f32 *progress);
 s32 cam_select_alt_mode(s32 angle);
 s32 set_cam_angle(s32 mode);
-void set_handheld_shake(u8 mode);
-void shake_camera_handheld(Vec3f pos, Vec3f focus);
 s32 find_c_buttons_pressed(u16 currentState, u16 buttonsPressed, u16 buttonsDown);
 s32 update_camera_hud_status(struct Camera *c);
 s32 collide_with_walls(Vec3f pos, f32 offsetY, f32 radius);
 void clamp_pitch(Vec3f from, Vec3f to, s16 maxPitch, s16 minPitch);
 s32 is_within_100_units_of_mario(f32 posX, f32 posY, f32 posZ);
-s32 set_or_approach_f32_asymptotic(f32 *dst, f32 goal, f32 scale);
-void approach_vec3f_asymptotic(Vec3f current, Vec3f target, f32 xMul, f32 yMul, f32 zMul);
-void set_or_approach_vec3f_asymptotic(Vec3f dst, Vec3f goal, f32 xMul, f32 yMul, f32 zMul);
-s32 camera_approach_s16_symmetric_bool(s16 *current, s16 target, s16 increment);
-s32 set_or_approach_s16_symmetric(s16 *current, s16 target, s16 increment);
-s32 camera_approach_f32_symmetric_bool(f32 *current, f32 target, f32 increment);
-f32 camera_approach_f32_symmetric(f32 value, f32 target, f32 increment);
-void random_vec3s(Vec3s dst, s16 xRange, s16 yRange, s16 zRange);
-s32 clamp_positions_and_find_yaw(Vec3f pos, Vec3f origin, f32 xMax, f32 xMin, f32 zMax, f32 zMin);
-s32 is_range_behind_surface(Vec3f from, Vec3f to, struct Surface *surf, s16 range, s16 surfType);
-void scale_along_line(Vec3f dest, Vec3f from, Vec3f to, f32 scale);
-s16 calculate_pitch(Vec3f from, Vec3f to);
-s16 calculate_yaw(Vec3f from, Vec3f to);
-void calculate_angles(Vec3f from, Vec3f to, s16 *pitch, s16 *yaw);
-f32 calc_abs_dist(Vec3f a, Vec3f b);
-f32 calc_abs_dist_squared(Vec3f a, Vec3f b);
-f32 calc_hor_dist(Vec3f a, Vec3f b);
-void rotate_in_xz(Vec3f dst, Vec3f src, s16 yaw);
-void rotate_in_yz(Vec3f dst, Vec3f src, s16 pitch);
+void set_camera_shake_from_hit(s16 shake);
+void set_environmental_camera_shake(s16 shake);
+void set_camera_shake_from_point(s16 shake, f32 posX, f32 posY, f32 posZ);
+void set_handheld_shake(u8 mode);
+void shake_camera_handheld(Vec3f pos, Vec3f focus);
 void set_camera_pitch_shake(s16 mag, s16 decay, s16 inc);
 void set_camera_yaw_shake(s16 mag, s16 decay, s16 inc);
 void set_camera_roll_shake(s16 mag, s16 decay, s16 inc);
@@ -775,34 +749,95 @@ void play_sound_cbutton_side(void);
 void play_sound_button_change_blocked(void);
 void play_sound_rbutton_changed(void);
 void play_sound_if_cam_switched_to_lakitu_or_mario(void);
-void radial_camera_input(struct Camera *c);
-void trigger_cutscene_dialog(s32 trigger);
-void handle_c_button_movement(struct Camera *c);
-void start_cutscene(struct Camera *c, u8 cutscene);
-u8 get_cutscene_from_mario_status(struct Camera *c);
+void pan_camera(struct Camera *c, s16 incPitch, s16 incYaw);
 void warp_camera(f32 displacementX, f32 displacementY, f32 displacementZ);
 void approach_camera_height(struct Camera *c, f32 goal, f32 inc);
 void offset_rotated(Vec3f dst, Vec3f from, Vec3f to, Vec3s rotation);
 s16 next_lakitu_state(Vec3f newPos, Vec3f newFoc, Vec3f curPos, Vec3f curFoc, Vec3f oldPos, Vec3f oldFoc, s16 yaw);
 void set_fixed_cam_axis_sa_lobby(UNUSED s16 preset);
 s16 camera_course_processing(struct Camera *c);
-void resolve_geometry_collisions(Vec3f pos);
-s32 rotate_camera_around_walls(struct Camera *c, Vec3f cPos, s16 *avoidYaw, s16 yawRange);
 void find_mario_floor_and_ceil(struct PlayerGeometry *pg);
-void start_object_cutscene_without_focus(u8 cutscene);
-s16 cutscene_object_with_dialog(u8 cutscene, struct Object *obj, s16 dialogID);
-s16 cutscene_object_without_dialog(u8 cutscene, struct Object *obj);
-s16 cutscene_object(u8 cutscene, struct Object *obj);
-void play_cutscene(struct Camera *c);
-void cutscene_event(CameraEvent event, struct Camera * c, s16 start, s16 end);
-void cutscene_spawn_obj(u32 obj, s16 frame);
 void set_fov_shake(s16 amplitude, s16 decay, s16 shakeSpeed);
-
+s32 snap_to_45_degrees(s16 angle);
+void set_camera_mode(struct Camera *c, s16 mode, s16 frames);
+s32 set_camera_mode_fixed(struct Camera *c, s16 x, s16 y, s16 z);
+void set_camera_mode_8_directions(struct Camera *c);
+void set_camera_mode_boss_fight(struct Camera *c);
+void set_camera_mode_close_cam(u8 *mode);
+void set_camera_mode_radial(struct Camera *c, s16 transitionTime);
+void transition_to_camera_mode(struct Camera *c, s16 newMode, s16 numFrames);
 void set_fov_function(u8 func);
-void cutscene_set_fov_shake_preset(u8 preset);
 void set_fov_shake_from_point_preset(u8 preset, f32 posX, f32 posY, f32 posZ);
 void obj_rotate_towards_point(struct Object *obj, Vec3f point, s16 pitchOff, s16 yawOff, s16 pitchDiv, s16 yawDiv);
+void set_mode_c_up(struct Camera *c);
 
-Gfx *geo_camera_fov(s32 callContext, struct GraphNode *g, UNUSED void *context);
+s16 update_slide_camera(struct Camera *c);
+s32 update_radial_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_outward_radial_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_behind_mario_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_mario_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 unused_update_mode_5_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_c_up(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 nop_update_water_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_slide_or_0f_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_in_cannon(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_boss_fight_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_parallel_tracking_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_fixed_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_8_directions_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_slide_or_0f_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+s32 update_spiral_stairs_camera(struct Camera *c, Vec3f focus, Vec3f pos);
+
+#ifdef ENABLE_VANILLA_LEVEL_SPECIFIC_CHECKS
+s16 find_in_bounds_yaw_wdw_bob_thi(Vec3f pos, Vec3f origin, s16 yaw);
+#endif
+
+extern s16 sYawSpeed;
+extern struct PlayerCameraState *sMarioCamState;
+extern struct CameraFOVStatus sFOVState;
+extern struct TransitionInfo sModeTransition;
+extern struct PlayerGeometry sMarioGeometry;
+extern s16 sAvoidYawVel;
+extern struct HandheldShakePoint sHandheldShakeSpline[4];
+extern s16 sHandheldShakeMag;
+extern f32 sHandheldShakeTimer;
+extern f32 sHandheldShakeInc;
+extern s16 sHandheldShakePitch;
+extern s16 sHandheldShakeYaw;
+extern s16 sHandheldShakeRoll;
+extern s16 sSelectionFlags;
+extern s16 s2ndRotateFlags;
+extern s16 sCameraSoundFlags;
+extern u16 sCButtonsPressed;
+extern struct LakituState gLakituState;
+extern s16 sAreaYaw;
+extern s16 sAreaYawChange;
+extern s16 sLakituDist;
+extern s16 sLakituPitch;
+extern f32 sZoomAmount;
+extern s16 sCSideButtonYaw;
+extern s16 sBehindMarioSoundTimer;
+extern f32 sZeroZoomDist;
+extern s16 sCUpCameraPitch;
+extern s16 sModeOffsetYaw;
+extern s16 s8DirModeBaseYaw;
+extern s16 s8DirModeYawOffset;
+extern f32 sPanDistance;
+extern f32 sCannonYOffset;
+extern struct ModeTransitionInfo sModeInfo;
+extern Vec3f sCastleEntranceOffset;
+extern Vec3f sFixedModeBasePosition;
+extern s16 gCameraMovementFlags;
+extern s16 sStatusFlags;
+extern struct Camera *gCamera;
+extern u8 sFramesPaused;
+extern u8 sZoomOutAreaMasks[];
+extern s32 gCurrLevelArea;
+extern u32 gPrevLevel;
+extern f32 gCameraZoomDist;
+extern struct CameraStoredInfo sCameraStoreCUp;
+extern struct CameraStoredInfo sCameraStoreCutscene;
+extern s16 sCameraYawAfterDoorCutscene;
+
 
 #endif // CAMERA_H

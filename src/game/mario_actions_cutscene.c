@@ -8,6 +8,8 @@
 #include "behavior_data.h"
 #include "camera.h"
 #include "dialog_ids.h"
+#include "camera/camera_math.h"
+#include "camera/cutscene_helpers.h"
 #include "engine/behavior_script.h"
 #include "engine/graph_node.h"
 #include "engine/math_util.h"
@@ -77,6 +79,51 @@ static Vec4s sJumboStarKeyframes[27] = {
 #define CREDIT_TEXT_MARGIN_X ((s32)(GFX_DIMENSIONS_ASPECT_RATIO * 21))
 #define CREDIT_TEXT_X_LEFT GFX_DIMENSIONS_RECT_FROM_LEFT_EDGE(CREDIT_TEXT_MARGIN_X)
 #define CREDIT_TEXT_X_RIGHT GFX_DIMENSIONS_RECT_FROM_RIGHT_EDGE(CREDIT_TEXT_MARGIN_X)
+
+
+/**
+ * Converts the u32 given in DEFINE_COURSE to a u8 with the odd and even digits rotated into the right
+ * order for sDanceCutsceneIndexTable
+ */
+#define DROT(value, index) ((value >> (32 - (index + 1) * 8)) & 0xF0) >> 4 | \
+                           ((value >> (32 - (index + 1) * 8)) & 0x0F) << 4
+
+#define DANCE_ENTRY(c) { DROT(c, 0), DROT(c, 1), DROT(c, 2), DROT(c, 3) },
+
+#define DEFINE_COURSE(_0, cutscenes) DANCE_ENTRY(cutscenes)
+#define DEFINE_COURSES_END()
+#define DEFINE_BONUS_COURSE(_0, cutscenes) DANCE_ENTRY(cutscenes)
+
+/**
+ * Each hex digit is an index into sDanceCutsceneTable.
+ *
+ * 0: Lakitu flies away after the dance
+ * 1: Only rotates the camera, doesn't zoom out
+ * 2: The camera goes to a close up of Mario
+ * 3: Bowser keys and the grand star
+ * 4: Default, used for 100 coin stars, 8 red coin stars in bowser levels, and secret stars
+ */
+u8 sDanceCutsceneIndexTable[][4] = {
+    #include "levels/course_defines.h"
+    { 0x44, 0x44, 0x44, 0x04 }, // (26) Why go to all this trouble to save bytes and do this?!
+};
+#undef DEFINE_COURSE
+#undef DEFINE_COURSES_END
+#undef DEFINE_BONUS_COURSE
+
+#undef DANCE_ENTRY
+#undef DROT
+
+/**
+ * Maps cutscene to numbers in [0,4]. Used in determine_dance_cutscene() with sDanceCutsceneIndexTable.
+ *
+ * Only the first 5 entries are used. Perhaps the last 5 were bools used to indicate whether the star
+ * type exits the course or not.
+ */
+u8 sDanceCutsceneTable[] = {
+    CUTSCENE_DANCE_FLY_AWAY, CUTSCENE_DANCE_ROTATE, CUTSCENE_DANCE_CLOSEUP, CUTSCENE_KEY_DANCE, CUTSCENE_DANCE_DEFAULT,
+    CUTSCENE_NONE,           CUTSCENE_NONE,         CUTSCENE_NONE,          CUTSCENE_NONE,      CUTSCENE_NONE,
+};
 
 /**
  * print_displaying_credits_entry: Print the current displaying Credits Entry
@@ -181,6 +228,192 @@ Gfx *geo_switch_peach_eyes(s32 callContext, struct GraphNode *node, UNUSED s32 c
     }
 
     return NULL;
+}
+
+/**
+ * @return `pullResult` or `pushResult` depending on Mario's door action
+ */
+u8 open_door_cutscene(u8 pullResult, u8 pushResult) {
+    if (sMarioCamState->action == ACT_PULLING_DOOR) {
+        return pullResult;
+    }
+    if (sMarioCamState->action == ACT_PUSHING_DOOR) {
+        return pushResult;
+    }
+    return CUTSCENE_NONE;
+}
+
+/**
+ * Look up the victory dance cutscene in sDanceCutsceneTable
+ *
+ * First the index entry is determined based on the course and the star that was just picked up
+ * Like the entries in sZoomOutAreaMasks, each entry represents two stars
+ * The current courses's 4 bits of the index entry are used as the actual index into sDanceCutsceneTable
+ *
+ * @return the victory cutscene to use
+ */
+s32 determine_dance_cutscene(UNUSED struct Camera *c) {
+#ifdef NON_STOP_STARS
+    return CUTSCENE_DANCE_DEFAULT;
+#else
+    u8 cutscene = CUTSCENE_NONE;
+    u8 cutsceneIndex = 0;
+    u8 starIndex = (gLastCompletedStarNum - 1) / 2;
+    u8 courseNum = gCurrCourseNum;
+
+    if (starIndex > 3) {
+        starIndex = 0;
+    }
+    if (courseNum > COURSE_MAX) {
+        courseNum = COURSE_NONE;
+    }
+    cutsceneIndex = sDanceCutsceneIndexTable[courseNum][starIndex];
+
+    if (gLastCompletedStarNum & 1) {
+        // Odd stars take the lower four bytes
+        cutsceneIndex &= 0xF;
+    } else {
+        // Even stars use the upper four bytes
+        cutsceneIndex = cutsceneIndex >> 4;
+    }
+    cutscene = sDanceCutsceneTable[cutsceneIndex];
+    return cutscene;
+#endif
+}
+
+/**
+ * If no cutscenes are playing, determines if a cutscene should play based on Mario's action and
+ * cameraEvent
+ *
+ * @return the cutscene that should start, 0 if none
+ */
+u8 get_cutscene_from_mario_status(struct Camera *c) {
+    u8 cutscene = c->cutscene;
+
+    if (cutscene == CUTSCENE_NONE) {
+        // A cutscene started by an object, if any, will start if nothing else happened
+        cutscene = sObjectCutscene;
+        sObjectCutscene = CUTSCENE_NONE;
+        if (sMarioCamState->cameraEvent == CAM_EVENT_DOOR) {
+            switch (gCurrLevelArea) {
+                case AREA_CASTLE_LOBBY:
+                    //! doorStatus is never DOOR_ENTER_LOBBY when cameraEvent == 6, because
+                    //! doorStatus is only used for the star door in the lobby, which uses
+                    //! ACT_ENTERING_STAR_DOOR
+                    if (c->mode == CAMERA_MODE_SPIRAL_STAIRS || c->mode == CAMERA_MODE_CLOSE || c->doorStatus == DOOR_ENTER_LOBBY) {
+                        cutscene = open_door_cutscene(CUTSCENE_DOOR_PULL_MODE, CUTSCENE_DOOR_PUSH_MODE);
+                    } else {
+                        cutscene = open_door_cutscene(CUTSCENE_DOOR_PULL, CUTSCENE_DOOR_PUSH);
+                    }
+                    break;
+                case AREA_BBH:
+                    //! Castle Lobby uses 0 to mean 'no special modes', but BBH uses 1...
+                    if (c->doorStatus == DOOR_LEAVING_SPECIAL) {
+                        cutscene = open_door_cutscene(CUTSCENE_DOOR_PULL, CUTSCENE_DOOR_PUSH);
+                    } else {
+                        cutscene = open_door_cutscene(CUTSCENE_DOOR_PULL_MODE, CUTSCENE_DOOR_PUSH_MODE);
+                    }
+                    break;
+                default:
+                    cutscene = open_door_cutscene(CUTSCENE_DOOR_PULL, CUTSCENE_DOOR_PUSH);
+                    break;
+            }
+        }
+        if (sMarioCamState->cameraEvent == CAM_EVENT_DOOR_WARP) {
+            cutscene = CUTSCENE_DOOR_WARP;
+        }
+        if (sMarioCamState->cameraEvent == CAM_EVENT_CANNON) {
+            cutscene = CUTSCENE_ENTER_CANNON;
+        }
+        if (SURFACE_IS_PAINTING_WARP(sMarioGeometry.currFloorType)) {
+            cutscene = CUTSCENE_ENTER_PAINTING;
+        }
+        switch (sMarioCamState->action) {
+            case ACT_DEATH_EXIT:
+                cutscene = CUTSCENE_DEATH_EXIT;
+                break;
+            case ACT_EXIT_AIRBORNE:
+                cutscene = CUTSCENE_EXIT_PAINTING_SUCC;
+                break;
+            case ACT_SPECIAL_EXIT_AIRBORNE:
+                if (gPrevLevel == LEVEL_BOWSER_1 || gPrevLevel == LEVEL_BOWSER_2
+                    || gPrevLevel == LEVEL_BOWSER_3) {
+                    cutscene = CUTSCENE_EXIT_BOWSER_SUCC;
+                } else {
+                    cutscene = CUTSCENE_EXIT_SPECIAL_SUCC;
+                }
+                break;
+            case ACT_SPECIAL_DEATH_EXIT:
+                if (gPrevLevel == LEVEL_BOWSER_1 || gPrevLevel == LEVEL_BOWSER_2
+                    || gPrevLevel == LEVEL_BOWSER_3) {
+                    cutscene = CUTSCENE_EXIT_BOWSER_DEATH;
+                } else {
+                    cutscene = CUTSCENE_NONPAINTING_DEATH;
+                }
+                break;
+            case ACT_ENTERING_STAR_DOOR:
+                if (c->doorStatus == DOOR_DEFAULT) {
+                    cutscene = CUTSCENE_SLIDING_DOORS_OPEN;
+                } else {
+                    cutscene = CUTSCENE_DOOR_PULL_MODE;
+                }
+                break;
+            case ACT_UNLOCKING_KEY_DOOR:
+                cutscene = CUTSCENE_UNLOCK_KEY_DOOR;
+                break;
+            case ACT_WATER_DEATH:
+                cutscene = CUTSCENE_WATER_DEATH;
+                break;
+            case ACT_DEATH_ON_BACK:
+                cutscene = CUTSCENE_DEATH_ON_BACK;
+                break;
+            case ACT_DEATH_ON_STOMACH:
+                cutscene = CUTSCENE_DEATH_ON_STOMACH;
+                break;
+            case ACT_STANDING_DEATH:
+                cutscene = CUTSCENE_STANDING_DEATH;
+                break;
+            case ACT_SUFFOCATION:
+                cutscene = CUTSCENE_SUFFOCATION_DEATH;
+                break;
+            case ACT_QUICKSAND_DEATH:
+                cutscene = CUTSCENE_QUICKSAND_DEATH;
+                break;
+            case ACT_ELECTROCUTION:
+                cutscene = CUTSCENE_STANDING_DEATH;
+                break;
+            case ACT_STAR_DANCE_EXIT:
+                cutscene = determine_dance_cutscene(c);
+                break;
+            case ACT_STAR_DANCE_WATER:
+                cutscene = determine_dance_cutscene(c);
+                break;
+            case ACT_STAR_DANCE_NO_EXIT:
+                cutscene = CUTSCENE_DANCE_DEFAULT;
+                break;
+        }
+        switch (sMarioCamState->cameraEvent) {
+            case CAM_EVENT_START_INTRO:
+                cutscene = CUTSCENE_INTRO_PEACH;
+                break;
+            case CAM_EVENT_START_GRAND_STAR:
+                cutscene = CUTSCENE_GRAND_STAR;
+                break;
+            case CAM_EVENT_START_ENDING:
+                cutscene = CUTSCENE_ENDING;
+                break;
+            case CAM_EVENT_START_END_WAVING:
+                cutscene = CUTSCENE_END_WAVING;
+                break;
+            case CAM_EVENT_START_CREDITS:
+                cutscene = CUTSCENE_CREDITS;
+                break;
+        }
+    }
+    //! doorStatus is reset every frame. CameraTriggers need to constantly set doorStatus
+    c->doorStatus = DOOR_DEFAULT;
+
+    return cutscene;
 }
 
 /**

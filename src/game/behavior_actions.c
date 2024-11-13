@@ -9,6 +9,7 @@
 #include "behavior_actions.h"
 #include "behavior_data.h"
 #include "camera.h"
+#include "camera/cutscene_helpers.h"
 #include "debug.h"
 #include "dialog_ids.h"
 #include "engine/behavior_script.h"
