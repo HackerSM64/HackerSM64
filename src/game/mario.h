@@ -6,6 +6,11 @@
 #include "macros.h"
 #include "types.h"
 
+// Continues running action logic, e.g. after Mario's action changes
+#define ACTION_CONTINUE TRUE
+// Finishes running action logic for the current frame
+#define ACTION_FINISH FALSE
+
 s32 is_anim_at_end(struct MarioState *m);
 s32 is_anim_past_end(struct MarioState *m);
 s16 set_mario_animation(struct MarioState *m, s32 targetAnimID);

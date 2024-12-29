@@ -146,7 +146,7 @@ s32 act_holding_pole(struct MarioState *m) {
         set_mario_animation(m, MARIO_ANIM_IDLE_ON_POLE);
     }
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_climbing_pole(struct MarioState *m) {
@@ -180,7 +180,7 @@ s32 act_climbing_pole(struct MarioState *m) {
         play_climbing_sounds(m, 1);
     }
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_grab_pole_slow(struct MarioState *m) {
@@ -194,7 +194,7 @@ s32 act_grab_pole_slow(struct MarioState *m) {
         add_tree_leaf_particles(m);
     }
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_grab_pole_fast(struct MarioState *m) {
@@ -215,7 +215,7 @@ s32 act_grab_pole_fast(struct MarioState *m) {
         add_tree_leaf_particles(m);
     }
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_top_of_pole_transition(struct MarioState *m) {
@@ -234,7 +234,7 @@ s32 act_top_of_pole_transition(struct MarioState *m) {
     }
 
     set_pole_position(m, return_mario_anim_y_translation(m));
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_top_of_pole(struct MarioState *m) {
@@ -249,7 +249,7 @@ s32 act_top_of_pole(struct MarioState *m) {
 
     set_mario_animation(m, MARIO_ANIM_HANDSTAND_IDLE);
     set_pole_position(m, return_mario_anim_y_translation(m));
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 perform_hanging_step(struct MarioState *m, Vec3f nextPos) {
@@ -404,7 +404,7 @@ s32 act_start_hanging(struct MarioState *m) {
         set_mario_action(m, ACT_HANGING, 0);
     }
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_hanging(struct MarioState *m) {
@@ -440,7 +440,7 @@ s32 act_hanging(struct MarioState *m) {
 
     update_hang_stationary(m);
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_hang_moving(struct MarioState *m) {
@@ -507,7 +507,7 @@ s32 act_hang_moving(struct MarioState *m) {
     }
 #endif
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 let_go_of_ledge(struct MarioState *m) {
@@ -610,7 +610,7 @@ s32 act_ledge_grab(struct MarioState *m) {
     stop_and_set_height_to_floor(m);
     set_mario_animation(m, MARIO_ANIM_IDLE_ON_LEDGE);
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_ledge_climb_slow(struct MarioState *m) {
@@ -636,7 +636,7 @@ s32 act_ledge_climb_slow(struct MarioState *m) {
         m->action = ACT_LEDGE_CLIMB_SLOW_2;
     }
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_ledge_climb_down(struct MarioState *m) {
@@ -649,7 +649,7 @@ s32 act_ledge_climb_down(struct MarioState *m) {
     update_ledge_climb(m, MARIO_ANIM_CLIMB_DOWN_LEDGE, ACT_LEDGE_GRAB);
     m->actionArg = 1;
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_ledge_climb_fast(struct MarioState *m) {
@@ -666,7 +666,7 @@ s32 act_ledge_climb_fast(struct MarioState *m) {
     }
     update_ledge_climb_camera(m);
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_grabbed(struct MarioState *m) {
@@ -684,7 +684,7 @@ s32 act_grabbed(struct MarioState *m) {
     }
 
     set_mario_animation(m, MARIO_ANIM_BEING_GRABBED);
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_in_cannon(struct MarioState *m) {
@@ -751,7 +751,7 @@ s32 act_in_cannon(struct MarioState *m) {
                 queue_rumble_data(60, 70);
 #endif
                 m->usedObj->oAction = OPENED_CANNON_ACT_SHOOT;
-                return FALSE;
+                return ACTION_FINISH;
             } else if (m->faceAngle[0] != startFacePitch || m->faceAngle[1] != startFaceYaw) {
                 play_sound(SOUND_MOVING_AIM_CANNON, marioObj->header.gfx.cameraToObject);
 #if ENABLE_RUMBLE
@@ -764,7 +764,7 @@ s32 act_in_cannon(struct MarioState *m) {
     vec3s_set(marioObj->header.gfx.angle, 0, m->faceAngle[1], 0);
     set_mario_animation(m, MARIO_ANIM_DIVE);
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 act_tornado_twirling(struct MarioState *m) {
@@ -844,7 +844,7 @@ s32 act_tornado_twirling(struct MarioState *m) {
     reset_rumble_timers_slip();
 #endif
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 check_common_automatic_cancels(struct MarioState *m) {
@@ -852,14 +852,14 @@ s32 check_common_automatic_cancels(struct MarioState *m) {
         return set_water_plunge_action(m);
     }
 
-    return FALSE;
+    return ACTION_FINISH;
 }
 
 s32 mario_execute_automatic_action(struct MarioState *m) {
-    s32 cancel = FALSE;
+    s32 cancel = ACTION_FINISH;
 
     if (check_common_automatic_cancels(m)) {
-        return TRUE;
+        return ACTION_CONTINUE;
     }
 
     m->quicksandDepth = 0.0f;
