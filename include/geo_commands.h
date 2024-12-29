@@ -58,6 +58,7 @@ enum GeoLayoutCommands {
     /*0x1E*/ GEO_CMD_NOP_1E,
     /*0x1F*/ GEO_CMD_NOP_1F,
     /*0x20*/ GEO_CMD_NODE_CULLING_RADIUS,
+    /*0x21*/ GEO_CMD_NODE_BATCH_DISPLAY_LIST,
 
     GEO_CMD_COUNT,
 };
@@ -358,6 +359,10 @@ enum GeoLayoutCommands {
  */
 #define GEO_DISPLAY_LIST(layer, displayList) \
     CMD_BBH(GEO_CMD_NODE_DISPLAY_LIST, layer, 0x0000), \
+    CMD_PTR(displayList)
+
+#define GEO_BATCH_DISPLAY_LIST(layer, batch, displayList) \
+    CMD_BBH(GEO_CMD_NODE_BATCH_DISPLAY_LIST, layer, batch), \
     CMD_PTR(displayList)
 
 /**

@@ -1478,34 +1478,42 @@ void shade_screen(void) {
     gDisplayListHead = dlHead;
 }
 
-void print_animated_red_coin(s16 x, s16 y) {
-    s32 globalTimer = gGlobalTimer;
-
-    create_dl_translation_matrix(MENU_MTX_PUSH, x, y, 0);
-    create_dl_scale_matrix(MENU_MTX_NOPUSH, 0.2f, 0.2f, 1.0f);
-    gDPSetRenderMode(gDisplayListHead++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
-
+static void print_animated_red_coin_start(void) {
 #ifdef IA8_30FPS_COINS
-    switch (globalTimer & 0x7) {
-        case 0: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_0     ); break;
-        case 1: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_22_5  ); break;
-        case 2: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_45    ); break;
-        case 3: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_67_5  ); break;
-        case 4: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_90    ); break;
-        case 5: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_67_5_r); break;
-        case 6: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_45_r  ); break;
-        case 7: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_22_5_r); break;
+    switch (gGlobalTimer & 0x7) {
+        case 0: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_0   ); break;
+        case 1: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_22_5); break;
+        case 2: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_45  ); break;
+        case 3: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_67_5); break;
+        case 4: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_90  ); break;
+        case 5: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_67_5); break;
+        case 6: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_45  ); break;
+        case 7: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_22_5); break;
     }
 #else
-    switch (globalTimer & 0x6) {
-        case 0: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_front     ); break;
-        case 2: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_tilt_right); break;
-        case 4: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_side      ); break;
-        case 6: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_tilt_left ); break;
+    switch (gGlobalTimer & 0x6) {
+        case 0: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_front     ); break;
+        case 2: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_tilt_right); break;
+        case 4: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_side      ); break;
+        case 6: gSPDisplayList(gDisplayListHead++, coin_seg3_dl_tilt_left ); break;
     }
 #endif
+    gDPSetRenderMode(gDisplayListHead++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
+}
 
+static void print_animated_red_coin_end(void) {
+    gSPDisplayList(gDisplayListHead++, coin_seg3_dl_end);
     gDPSetRenderMode(gDisplayListHead++, G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+}
+
+static void print_animated_red_coin(s16 x, s16 y) {
+    create_dl_translation_matrix(MENU_MTX_PUSH, x, y, 0);
+    create_dl_scale_matrix(MENU_MTX_NOPUSH, 0.2f, 0.2f, 1.0f);
+#ifdef IA8_30FPS_COINS
+    gSPDisplayList(gDisplayListHead++, (gGlobalTimer & 0x7) < 5 ? coin_seg3_dl_red_draw : coin_seg3_dl_red_draw_r);
+#else
+    gSPDisplayList(gDisplayListHead++, coin_seg3_dl_red_draw);
+#endif
     gSPPopMatrix(gDisplayListHead++, G_MTX_MODELVIEW);
 }
 
@@ -1513,12 +1521,16 @@ void render_pause_red_coins(void) {
     s8 x;
 
     if (gRedCoinsCollected <= 9) {
+        print_animated_red_coin_start();
         for (x = 0; x < gRedCoinsCollected; x++) {
             print_animated_red_coin(GFX_DIMENSIONS_FROM_RIGHT_EDGE(30) - x * 20, 16);
         }
+        print_animated_red_coin_end();
     }
     else {
+        print_animated_red_coin_start();
         print_animated_red_coin(GFX_DIMENSIONS_FROM_RIGHT_EDGE(108), 16);
+        print_animated_red_coin_end();
         Mtx *mtx;
 
         mtx = alloc_display_list(sizeof(*mtx));

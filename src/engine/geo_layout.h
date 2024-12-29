@@ -82,6 +82,7 @@ void geo_layout_cmd_nop(void);
 void geo_layout_cmd_copy_view(void);
 void geo_layout_cmd_node_held_obj(void);
 void geo_layout_cmd_node_culling_radius(void);
+void geo_layout_cmd_node_batch_display_list(void);
 
 struct GraphNode *process_geo_layout(struct AllocOnlyPool *pool, void *segptr);
 

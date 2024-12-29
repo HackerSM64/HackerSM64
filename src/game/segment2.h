@@ -32,6 +32,7 @@ extern Gfx dl_shadow_circle[];
 extern Gfx dl_shadow_square[];
 extern Gfx dl_shadow_4_verts[];
 extern Gfx dl_shadow_end[];
+extern Gfx dl_shadow_tris[];
 extern Gfx dl_skybox_begin[];
 extern Gfx dl_skybox_tile_tex_settings[];
 extern Gfx dl_skybox_end[];

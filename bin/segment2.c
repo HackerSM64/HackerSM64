@@ -2761,11 +2761,21 @@ const Gfx dl_draw_quad_verts_4567[] = {
     gsSPEndDisplayList(),
 };
 
+#define G_CC_SHADOW TEXEL0, 0, SHADE, 0, TEXEL0, 0, PRIMITIVE, 0
+
 const Gfx dl_shadow_begin[] = {
     gsDPPipeSync(),
     gsSPClearGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsDPSetCombineMode(G_CC_MODULATEIFADEA, G_CC_MODULATEIFADEA),
+    gsDPSetCombineMode(G_CC_SHADOW, G_CC_SHADOW),
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON),
+    gsSPEndDisplayList(),
+};
+
+const Gfx dl_shadow_end[] = {
+    gsDPPipeSync(),
+    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
+    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
+    gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsSPEndDisplayList(),
 };
 
@@ -2810,13 +2820,9 @@ static const Vtx vertex_shadow[] = {
 };
 
 // 0x02014638 - 0x02014660
-const Gfx dl_shadow_end[] = {
+const Gfx dl_shadow_tris[] = {
     gsSPVertex(vertex_shadow, 4, 0),
     gsSP2Triangles( 0,  2,  1, 0x0,  1,  2,  3, 0x0),
-    gsDPPipeSync(),
-    gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
-    gsSPSetGeometryMode(G_LIGHTING | G_CULL_BACK),
-    gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsSPEndDisplayList(),
 };
 

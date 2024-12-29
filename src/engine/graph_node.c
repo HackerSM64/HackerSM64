@@ -8,6 +8,7 @@
 #include "game/rendering_graph_node.h"
 #include "game/area.h"
 #include "geo_layout.h"
+#include "batch_list.h"
 
 /**
  * Initialize a geo node with a given type. Sets all links such that there
@@ -122,6 +123,13 @@ struct GraphNodeMasterList *init_graph_node_master_list(struct AllocOnlyPool *po
 
         if (on) {
             graphNode->node.flags |= GRAPH_RENDER_Z_BUFFER;
+            for (int layer = 0; layer < LAYER_COUNT; layer++) {
+                graphNode->layers[layer].objects = batch_list_objects_alloc(pool, layer);
+            }
+        } else {
+            for (int layer = 0; layer < LAYER_COUNT; layer++) {
+                graphNode->layers[layer].objects = NULL;
+            }
         }
     }
 
@@ -517,6 +525,21 @@ struct GraphNodeHeldObject *init_graph_node_held_object(struct AllocOnlyPool *po
         if (nodeFunc != NULL) {
             nodeFunc(GEO_CONTEXT_CREATE, &graphNode->fnNode.node, pool);
         }
+    }
+
+    return graphNode;
+}
+
+struct GraphNodeBatchDisplayList* init_graph_node_batch_display_list(struct AllocOnlyPool *pool, struct GraphNodeBatchDisplayList *graphNode, void *displayList, s32 drawingLayer, s32 batch) {
+    if (pool != NULL) {
+        graphNode = alloc_only_pool_alloc(pool, sizeof(struct GraphNodeBatchDisplayList));
+    }
+
+    if (graphNode != NULL) {
+        init_scene_graph_node_links(&graphNode->node, GRAPH_NODE_TYPE_BATCH_DISPLAY_LIST);
+        SET_GRAPH_NODE_LAYER(graphNode->node.flags, drawingLayer);
+        graphNode->displayList = displayList;
+        graphNode->batch = batch;
     }
 
     return graphNode;

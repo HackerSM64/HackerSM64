@@ -43,6 +43,7 @@ GeoLayoutCommandProc GeoLayoutJumpTable[] = {
     /*GEO_CMD_NOP_1E                    */ geo_layout_cmd_nop2,
     /*GEO_CMD_NOP_1F                    */ geo_layout_cmd_nop3,
     /*GEO_CMD_NODE_CULLING_RADIUS       */ geo_layout_cmd_node_culling_radius,
+    /*GEO_CMD_NODE_BATCH_DISPLAY_LIST   */ geo_layout_cmd_node_batch_display_list,
 };
 
 struct GraphNode gObjParentGraphNode;
@@ -749,6 +750,15 @@ void geo_layout_cmd_node_culling_radius(void) {
     struct GraphNodeCullingRadius *graphNode = init_graph_node_culling_radius(gGraphNodePool, NULL, cur_geo_cmd_s16(0x02));
     register_scene_graph_node(&graphNode->node);
     gGeoLayoutCommand += 0x04 << CMD_SIZE_SHIFT;
+}
+
+void geo_layout_cmd_node_batch_display_list(void) {
+    s32 drawingLayer = cur_geo_cmd_u8(0x01);
+    s32 batch = cur_geo_cmd_s16(0x02);
+    void *displayList = cur_geo_cmd_ptr(0x04);
+    struct GraphNodeBatchDisplayList *graphNode = init_graph_node_batch_display_list(gGraphNodePool, NULL, displayList, drawingLayer, batch);
+    register_scene_graph_node(&graphNode->node);
+    gGeoLayoutCommand += 0x08 << CMD_SIZE_SHIFT;
 }
 
 struct GraphNode *process_geo_layout(struct AllocOnlyPool *pool, void *segptr) {

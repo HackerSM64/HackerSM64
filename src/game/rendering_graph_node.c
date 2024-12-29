@@ -47,10 +47,10 @@
  *
  */
 
-s16 gMatStackIndex = 0;
-ALIGNED16 Mat4 gMatStack[32];
-ALIGNED16 Mtx *gMatStackFixed[32];
-f32 sAspectRatio;
+static s16 gMatStackIndex = 0;
+static ALIGNED16 Mat4 gMatStack[32];
+static ALIGNED16 Mtx *gMatStackFixed[32];
+static f32 sAspectRatio;
 
 /**
  * Animation nodes have state in global variables, so this struct captures
@@ -80,7 +80,7 @@ s16 *gCurrAnimData;
 struct AllocOnlyPool *gDisplayListHeap;
 
 /* Rendermode settings for cycle 1 for all 8 or 13 layers. */
-struct RenderModeContainer renderModeTable_1Cycle[2] = { 
+static const struct RenderModeContainer renderModeTable_1Cycle[2] = {
     [RENDER_NO_ZB] = { {
         [LAYER_FORCE] = G_RM_OPA_SURF,
         [LAYER_OPAQUE] = G_RM_AA_OPA_SURF,
@@ -94,6 +94,7 @@ struct RenderModeContainer renderModeTable_1Cycle[2] = {
         [LAYER_OCCLUDE_SILHOUETTE_OPAQUE] = G_RM_AA_OPA_SURF,
         [LAYER_OCCLUDE_SILHOUETTE_ALPHA] = G_RM_AA_TEX_EDGE,
 #endif
+        [LAYER_CLD] = G_RM_CLD_SURF,
         [LAYER_TRANSPARENT_DECAL] = G_RM_AA_XLU_SURF,
         [LAYER_TRANSPARENT] = G_RM_AA_XLU_SURF,
         [LAYER_TRANSPARENT_INTER] = G_RM_AA_XLU_SURF,
@@ -111,13 +112,14 @@ struct RenderModeContainer renderModeTable_1Cycle[2] = {
         [LAYER_OCCLUDE_SILHOUETTE_OPAQUE] = G_RM_AA_ZB_OPA_SURF,
         [LAYER_OCCLUDE_SILHOUETTE_ALPHA] = G_RM_AA_ZB_TEX_EDGE,
 #endif
+        [LAYER_CLD] = G_RM_ZB_CLD_SURF,
         [LAYER_TRANSPARENT_DECAL] = G_RM_AA_ZB_XLU_DECAL,
         [LAYER_TRANSPARENT] = G_RM_AA_ZB_XLU_SURF,
         [LAYER_TRANSPARENT_INTER] = G_RM_AA_ZB_XLU_INTER,
     } } };
 
 /* Rendermode settings for cycle 2 for all 13 layers. */
-struct RenderModeContainer renderModeTable_2Cycle[2] = {
+static const struct RenderModeContainer renderModeTable_2Cycle[2] = {
     [RENDER_NO_ZB] = { {
         [LAYER_FORCE] = G_RM_OPA_SURF2,
         [LAYER_OPAQUE] = G_RM_AA_OPA_SURF2,
@@ -131,6 +133,7 @@ struct RenderModeContainer renderModeTable_2Cycle[2] = {
         [LAYER_OCCLUDE_SILHOUETTE_OPAQUE] = G_RM_AA_OPA_SURF2,
         [LAYER_OCCLUDE_SILHOUETTE_ALPHA] = G_RM_AA_TEX_EDGE2,
 #endif
+        [LAYER_CLD] = G_RM_CLD_SURF2,
         [LAYER_TRANSPARENT_DECAL] = G_RM_AA_XLU_SURF2,
         [LAYER_TRANSPARENT] = G_RM_AA_XLU_SURF2,
         [LAYER_TRANSPARENT_INTER] = G_RM_AA_XLU_SURF2,
@@ -148,6 +151,7 @@ struct RenderModeContainer renderModeTable_2Cycle[2] = {
         [LAYER_OCCLUDE_SILHOUETTE_OPAQUE] = G_RM_AA_ZB_OPA_SURF2,
         [LAYER_OCCLUDE_SILHOUETTE_ALPHA] = G_RM_AA_ZB_TEX_EDGE2,
 #endif
+        [LAYER_CLD] = G_RM_ZB_CLD_SURF2,
         [LAYER_TRANSPARENT_DECAL] = G_RM_AA_ZB_XLU_DECAL2,
         [LAYER_TRANSPARENT] = G_RM_AA_ZB_XLU_SURF2,
         [LAYER_TRANSPARENT_INTER] = G_RM_AA_ZB_XLU_INTER2,
@@ -248,6 +252,81 @@ Mtx identityMatrixWorldScale = {{
      0x00000000,                            LOWER_FIXED(1.0f)               <<  0}
 }};
 
+static void lists_render(Gfx **ptempGfxHead, struct DisplayListNode* currList) {
+#define tempGfxHead (*ptempGfxHead)
+    do {
+        gSPMatrix(tempGfxHead++, VIRTUAL_TO_PHYSICAL(currList->transform), (G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH));
+        gSPDisplayList(tempGfxHead++, currList->displayList);
+        currList = currList->next;
+    } while (currList != NULL);
+#undef tempGfxHead
+}
+
+static int batches_render(Gfx **ptempGfxHead, struct BatchArray* arr, u32 mode1, u32 mode2) {
+#define tempGfxHead (*ptempGfxHead)
+    int amountRendered = 0;
+
+    // Some "fun" display lists before may decide to change the render mode so we need to reset it.
+    // Notably this happens when env effects that change render mode and do not revert it.
+    gDPSetRenderMode(tempGfxHead++, mode1, mode2);
+
+    for (int batch = 0; batch < arr->count; batch++) {
+        struct DisplayListLinks* batchLinks = &arr->batches[batch];
+        if (!batchLinks->head)
+            continue;
+
+        const struct BatchDisplayLists* batchDisplayLists = &arr->batchDLs[batch];
+        gSPDisplayList(tempGfxHead++, batchDisplayLists->startDl);
+        amountRendered++;
+        lists_render(&tempGfxHead, batchLinks->head);
+        gSPDisplayList(tempGfxHead++, batchDisplayLists->endDl);
+    }
+#undef tempGfxHead
+
+    return amountRendered;
+}
+
+static void main_render(Gfx **ptempGfxHead, struct DisplayListNode* currList, u32 mode1, u32 mode2, int phaseIndex) {
+#define tempGfxHead (*ptempGfxHead)
+#if defined(DISABLE_AA) || !SILHOUETTE
+    (void)phaseIndex;
+    // Set the render mode for the current layer.
+    gDPSetRenderMode(tempGfxHead++, mode1, mode2);
+#else
+    if (phaseIndex == RENDER_PHASE_NON_SILHOUETTE) {
+        // To properly cover the silhouette, disable AA.
+        // The silhouette model does not have AA due to the hack used to prevent triangle overlap.
+        gDPSetRenderMode(tempGfxHead++, mode1 & ~IM_RD, mode2 & ~IM_RD);
+    } else {
+        // Set the render mode for the current dl.
+        gDPSetRenderMode(tempGfxHead++, mode1, mode2);
+    }
+#endif
+    // Iterate through all the displaylists on the current layer.
+    while (currList != NULL) {
+        // Add the display list's transformation to the master list.
+        gSPMatrix(tempGfxHead++, VIRTUAL_TO_PHYSICAL(currList->transform),
+                (G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH));
+#if SILHOUETTE
+        if (phaseIndex == RENDER_PHASE_SILHOUETTE) {
+            // Add the current display list to the master list, with silhouette F3D.
+            gSPDisplayList(tempGfxHead++, dl_silhouette_begin);
+            gSPDisplayList(tempGfxHead++, currList->displayList);
+            gSPDisplayList(tempGfxHead++, dl_silhouette_end);
+        } else {
+            // Add the current display list to the master list.
+            gSPDisplayList(tempGfxHead++, currList->displayList);
+        }
+#else
+        // Add the current display list to the master list.
+        gSPDisplayList(tempGfxHead++, currList->displayList);
+#endif
+        // Move to the next DisplayListNode.
+        currList = currList->next;
+    }
+#undef tempGfxHead
+}
+
 /**
  * Process a master list node. This has been modified, so now it runs twice, for each microcode.
  * It iterates through the first 5 layers of if the first index using F3DLX2.Rej, then it switches
@@ -257,15 +336,14 @@ Mtx identityMatrixWorldScale = {{
  */
 void geo_process_master_list_sub(struct GraphNodeMasterList *node) {
     struct RenderPhase *renderPhase;
-    struct DisplayListNode *currList;
     s32 currLayer     = LAYER_FIRST;
     s32 startLayer    = LAYER_FIRST;
     s32 endLayer      = LAYER_LAST;
     s32 phaseIndex    = RENDER_PHASE_FIRST;
     s32 enableZBuffer = (node->node.flags & GRAPH_RENDER_Z_BUFFER) != 0;
     s32 finalPhase    = enableZBuffer ? RENDER_PHASE_END : 1;
-    struct RenderModeContainer *mode1List = &renderModeTable_1Cycle[enableZBuffer];
-    struct RenderModeContainer *mode2List = &renderModeTable_2Cycle[enableZBuffer];
+    const struct RenderModeContainer *mode1List = &renderModeTable_1Cycle[enableZBuffer];
+    const struct RenderModeContainer *mode2List = &renderModeTable_2Cycle[enableZBuffer];
     Gfx *tempGfxHead = gDisplayListHead;
 
     // Loop through the render phases
@@ -284,46 +362,17 @@ void geo_process_master_list_sub(struct GraphNodeMasterList *node) {
         }
         // Iterate through the layers on the current render phase.
         for (currLayer = startLayer; currLayer <= endLayer; currLayer++) {
-            // Set 'currList' to the first DisplayListNode on the current layer.
-            currList = node->listHeads[currLayer];
-#if defined(DISABLE_AA) || !SILHOUETTE
-            // Set the render mode for the current layer.
-            gDPSetRenderMode(tempGfxHead++, mode1List->modes[currLayer],
-                                                 mode2List->modes[currLayer]);
-#else
-            if (phaseIndex == RENDER_PHASE_NON_SILHOUETTE) {
-                // To properly cover the silhouette, disable AA.
-                // The silhouette model does not have AA due to the hack used to prevent triangle overlap.
-                gDPSetRenderMode(tempGfxHead++, (mode1List->modes[currLayer] & ~IM_RD),
-                                                     (mode2List->modes[currLayer] & ~IM_RD));
-            } else {
-                // Set the render mode for the current dl.
-                gDPSetRenderMode(tempGfxHead++, mode1List->modes[currLayer],
-                                                     mode2List->modes[currLayer]);
-            }
-#endif
-            // Iterate through all the displaylists on the current layer.
-            while (currList != NULL) {
-                // Add the display list's transformation to the master list.
-                gSPMatrix(tempGfxHead++, VIRTUAL_TO_PHYSICAL(currList->transform),
-                          (G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH));
-#if SILHOUETTE
-                if (phaseIndex == RENDER_PHASE_SILHOUETTE) {
-                    // Add the current display list to the master list, with silhouette F3D.
-                    gSPDisplayList(tempGfxHead++, dl_silhouette_begin);
-                    gSPDisplayList(tempGfxHead++, currList->displayList);
-                    gSPDisplayList(tempGfxHead++, dl_silhouette_end);
-                } else {
-                    // Add the current display list to the master list.
-                    gSPDisplayList(tempGfxHead++, currList->displayList);
-                }
-#else
-                // Add the current display list to the master list.
-                gSPDisplayList(tempGfxHead++, currList->displayList);
-#endif
-                // Move to the next DisplayListNode.
-                currList = currList->next;
-            }
+            struct MasterLayer *masterLayer = &node->layers[currLayer];
+            u32 mode1 = mode1List->modes[currLayer];
+            u32 mode2 = mode2List->modes[currLayer];
+
+            struct DisplayListNode *currList = masterLayer->list.head;
+            if (currList)
+                main_render(&tempGfxHead, currList, mode1, mode2, phaseIndex);
+
+            struct BatchArray *objects = masterLayer->objects;
+            if (objects)
+                batches_render(&tempGfxHead, objects, mode1, mode2);
         }
     }
 
@@ -342,16 +391,22 @@ void geo_process_master_list_sub(struct GraphNodeMasterList *node) {
     gDisplayListHead = tempGfxHead;
 }
 
-/**
- * Appends the display list to one of the master lists based on the layer
- * parameter. Look at the RenderModeContainer struct to see the corresponding
- * render modes of layers.
- */
-void geo_append_display_list(void *displayList, s32 layer) {
-#ifdef F3DEX_GBI_2
-    gSPLookAt(gDisplayListHead++, gCurLookAt);
-#endif
+static void append_dl(struct DisplayListLinks* list, void* dl) {
+    struct DisplayListNode *listNode = alloc_only_pool_alloc(gDisplayListHeap, sizeof(struct DisplayListNode));
+
+    listNode->transform = gMatStackFixed[gMatStackIndex];
+    listNode->displayList = dl;
+    listNode->next = NULL;
+    if (list->head == NULL) {
+        list->head = listNode;
+    } else {
+        list->tail->next = listNode;
+    }
+    list->tail = listNode;
+}
+
 #if SILHOUETTE
+static inline int mangle_silhouette_layer(int layer) {
     if (gCurGraphNodeObject != NULL) {
         if (gCurGraphNodeObject->node.flags & GRAPH_RENDER_SILHOUETTE) {
             switch (layer) {
@@ -366,21 +421,36 @@ void geo_append_display_list(void *displayList, s32 layer) {
             }
         }
     }
-#endif // F3DEX_GBI_2 || SILHOUETTE
-    if (gCurGraphNodeMasterList != NULL) {
-        struct DisplayListNode *listNode =
-            alloc_only_pool_alloc(gDisplayListHeap, sizeof(struct DisplayListNode));
 
-        listNode->transform = gMatStackFixed[gMatStackIndex];
-        listNode->displayList = displayList;
-        listNode->next = NULL;
-        if (gCurGraphNodeMasterList->listHeads[layer] == NULL) {
-            gCurGraphNodeMasterList->listHeads[layer] = listNode;
-        } else {
-            gCurGraphNodeMasterList->listTails[layer]->next = listNode;
-        }
-        gCurGraphNodeMasterList->listTails[layer] = listNode;
-    }
+    return layer;
+}
+#else
+static inline int mangle_silhouette_layer(int layer) {
+    return layer;
+}
+#endif
+
+/**
+ * Appends the display list to one of the master lists based on the layer
+ * parameter. Look at the RenderModeContainer struct to see the corresponding
+ * render modes of layers.
+ */
+void geo_append_display_list(void *displayList, s32 layer) {
+#ifdef F3DEX_GBI_2
+    gSPLookAt(gDisplayListHead++, gCurLookAt);
+#endif
+    layer = mangle_silhouette_layer(layer);
+    struct MasterLayer* masterLayer = &gCurGraphNodeMasterList->layers[layer];
+    append_dl(&masterLayer->list, displayList);
+}
+
+static void geo_append_batched_display_list(void *displayList, enum RenderLayers layer, s32 batch) {
+#ifdef F3DEX_GBI_2
+    gSPLookAt(gDisplayListHead++, gCurLookAt);
+#endif
+    layer = mangle_silhouette_layer(layer);
+    struct MasterLayer* masterLayer = &gCurGraphNodeMasterList->layers[layer];
+    append_dl(&masterLayer->objects->batches[batch], displayList);
 }
 
 static void inc_mat_stack() {
@@ -400,6 +470,25 @@ static void append_dl_and_return(struct GraphNodeDisplayList *node) {
     gMatStackIndex--;
 }
 
+static void append_batched_dl_and_return(struct GraphNodeBatchDisplayList *node) {
+    if (node->displayList != NULL) {
+        geo_append_batched_display_list(node->displayList, GET_GRAPH_NODE_LAYER(node->node.flags), node->batch);
+    }
+    if (node->node.children != NULL) {
+        geo_process_node_and_siblings(node->node.children);
+    }
+    gMatStackIndex--;
+}
+
+static void batches_clean(struct BatchArray* arr) {
+    if (!arr)
+        return;
+
+    for (int batch = 0; batch < arr->count; batch++) {
+        arr->batches[batch].head = NULL;
+    }
+}
+
 /**
  * Process the master list node.
  */
@@ -409,7 +498,9 @@ void geo_process_master_list(struct GraphNodeMasterList *node) {
     if (gCurGraphNodeMasterList == NULL && node->node.children != NULL) {
         gCurGraphNodeMasterList = node;
         for (layer = LAYER_FIRST; layer < LAYER_COUNT; layer++) {
-            node->listHeads[layer] = NULL;
+            struct MasterLayer* masterLayer = &node->layers[layer];
+            masterLayer->list.head = NULL;
+            batches_clean(masterLayer->objects);
         }
         geo_process_node_and_siblings(node->node.children);
         geo_process_master_list_sub(gCurGraphNodeMasterList);
@@ -903,10 +994,15 @@ void geo_process_shadow(struct GraphNodeShadow *node) {
                 gCurrShadow.floorNormal, shadowPos, gCurrShadow.scale, gCurGraphNodeObject->angle[1]);
 
             inc_mat_stack();
-            geo_append_display_list(
-                (void *) VIRTUAL_TO_PHYSICAL(shadowList),
-                gCurrShadow.isDecal ? LAYER_TRANSPARENT_DECAL : LAYER_TRANSPARENT
-            );
+
+            s32 layer = gCurrShadow.isDecal ? LAYER_TRANSPARENT_DECAL : LAYER_CLD;
+            s32 batch;
+            if (node->shadowType == SHADOW_CIRCLE) {
+                batch = gCurrShadow.isDecal ? BATCH_TRANSPARENT_DECAL_SHADOW_CIRCLE : BATCH_CLD_SHADOW_CIRCLE;
+            } else {
+                batch = gCurrShadow.isDecal ? BATCH_TRANSPARENT_DECAL_SHADOW_SQUARE : BATCH_CLD_SHADOW_SQUARE;
+            }
+            geo_append_batched_display_list((void *) VIRTUAL_TO_PHYSICAL(shadowList), layer, batch);
 
             gMatStackIndex--;
         }
@@ -1167,6 +1263,12 @@ void geo_process_held_object(struct GraphNodeHeldObject *node) {
     }
 }
 
+void geo_process_batch_display_list(struct GraphNodeBatchDisplayList *node) {
+    append_batched_dl_and_return((struct GraphNodeBatchDisplayList *)node);
+
+    gMatStackIndex++;
+}
+
 /**
  * Processes the children of the given GraphNode if it has any
  */
@@ -1202,6 +1304,7 @@ static GeoProcessFunc GeoProcessJumpTable[] = {
     [GRAPH_NODE_TYPE_CULLING_RADIUS      ] = geo_try_process_children,
     [GRAPH_NODE_TYPE_ROOT                ] = geo_try_process_children,
     [GRAPH_NODE_TYPE_START               ] = geo_try_process_children,
+    [GRAPH_NODE_TYPE_BATCH_DISPLAY_LIST  ] = geo_process_batch_display_list,
 };
 
 /**

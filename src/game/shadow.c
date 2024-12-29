@@ -168,14 +168,9 @@ void correct_lava_shadow_height(f32 *floorHeight) {
  * shadowType 0 uses a circle texture, the rest use a square texture.
  * Uses environment alpha for shadow solidity.
  */
-static void add_shadow_to_display_list(Gfx *displayListHead, s8 shadowType) {
-    if (shadowType == SHADOW_CIRCLE) {
-        gSPDisplayList(displayListHead++, dl_shadow_circle);
-    } else {
-        gSPDisplayList(displayListHead++, dl_shadow_square);
-    }
-    gDPSetEnvColor(displayListHead++, 255, 255, 255, s->solidity);
-    gSPDisplayList(displayListHead++, dl_shadow_end);
+static void add_shadow_to_display_list(Gfx *displayListHead) {
+    gDPSetPrimColor(displayListHead++, 0, 0, 255, 255, 255, s->solidity);
+    gSPDisplayList(displayListHead++, dl_shadow_tris);
     gSPEndDisplayList(displayListHead);
 }
 
@@ -353,14 +348,14 @@ Gfx *create_shadow_below_xyz(Vec3f pos, s16 shadowScale, u8 shadowSolidity, s8 s
         }
     }
 
-    Gfx *displayList = alloc_display_list(4 * sizeof(Gfx));
+    Gfx *displayList = alloc_display_list(3 * sizeof(Gfx));
 
     if (displayList == NULL) {
         return NULL;
     }
 
     // Generate the shadow display list with type and solidity.
-    add_shadow_to_display_list(displayList, shadowType);
+    add_shadow_to_display_list(displayList);
 
     // Move the shadow position to the floor height.
     pos[1] = floorHeight;
