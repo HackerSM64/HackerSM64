@@ -435,6 +435,9 @@ void update_walking_speed(struct MarioState *m) {
         // Slow down if moving backwards
         m->forwardVel += 1.1f;
     } else if (m->forwardVel <= targetSpeed) {
+        if (m->forwardVel <= 8.0f) {
+            m->forwardVel = MIN(m->intendedMag, 8.0f); // same fix as melee dashback
+        }
         // If accelerating
         m->forwardVel += 1.1f - m->forwardVel / 43.0f;
     } else if (m->floor->normal.y >= 0.95f) {
