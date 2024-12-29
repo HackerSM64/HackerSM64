@@ -435,6 +435,19 @@ void update_walking_speed(struct MarioState *m) {
         // Slow down if moving backwards
         m->forwardVel += 1.1f;
     } else if (m->forwardVel <= targetSpeed) {
+        
+        // When starting a walk, make a few checks and set Mario's speed to 8 on the first frame.
+        // This ensures Mario's speed is set consistently when starting a walk.
+        // We use m->actionArg here since it's a global variable that gets initalized to 0 elsewhere.
+        if (m->forwardVel <= 8.f && !m->actionArg
+            && !mario_floor_is_steep(m)) {
+            if (m->heldObj != NULL) {
+                m->forwardVel = MIN(m->intendedMag, 4.f); // Half as much when holding object, 5.0 forwardVel on first frame
+            } else {
+                m->forwardVel = MIN(m->intendedMag, 8.f); // same fix as melee dashback, 8.9 forwardVel on first frame
+            }
+        }
+
         // If accelerating
         m->forwardVel += 1.1f - m->forwardVel / 43.0f;
     } else if (m->floor->normal.y >= 0.95f) {
@@ -465,6 +478,7 @@ void update_walking_speed(struct MarioState *m) {
     m->faceAngle[1] =
         m->intendedYaw - approach_s32((s16)(m->intendedYaw - m->faceAngle[1]), 0, 0x800, 0x800);
 #endif
+    m->actionArg = 1; // Increment this so speed is only set to 8 on first frame of walking.
     apply_slope_accel(m);
 }
 
