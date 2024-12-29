@@ -571,6 +571,12 @@ Gfx *geo_snufit_scale_body(s32 callContext, struct GraphNode *node, UNUSED Mat4 
 // Bowser key cutscene
 Gfx *geo_scale_bowser_key(s32 callContext, struct GraphNode *node, UNUSED Mat4 mtx);
 
+// Coin
+#ifdef BLUE_COIN_SWITCH_PREVIEW
+Gfx *geo_switch_blue_coin_transparency(s32 callContext, struct GraphNode *node, UNUSED void *context);
+Gfx *geo_update_blue_coin_transparency(s32 callContext, struct GraphNode *node, UNUSED void *context);
+#endif
+
 // Water splash
 extern struct WaterDropletParams gShallowWaterSplashDropletParams;
 extern struct WaterDropletParams gShallowWaterWaveDropletParams;

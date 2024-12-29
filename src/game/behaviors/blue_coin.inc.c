@@ -37,6 +37,7 @@ void bhv_hidden_blue_coin_loop(void) {
 #ifdef BLUE_COIN_SWITCH_PREVIEW
             if (gMarioObject->platform == blueCoinSwitch) {
                 cur_obj_enable_rendering();
+                o->oOpacity = 159;
             } else {
                 cur_obj_disable_rendering();
             }
@@ -48,6 +49,7 @@ void bhv_hidden_blue_coin_loop(void) {
             // Become tangible
             cur_obj_enable_rendering();
             cur_obj_become_tangible();
+            o->oOpacity = 255;
 
             // After 200 frames of waiting and 20 2-frame blinks (for 240 frames total),
             // delete the object.
@@ -181,3 +183,47 @@ void bhv_blue_coin_switch_loop(void) {
             break;
     }
 }
+
+#ifdef BLUE_COIN_SWITCH_PREVIEW
+Gfx *geo_switch_blue_coin_transparency(s32 callContext, struct GraphNode *node, UNUSED void *context) {
+    if (callContext == GEO_CONTEXT_RENDER) {
+        struct Object *obj = gCurGraphNodeObjectNode;
+        struct GraphNodeSwitchCase *switchCase = (struct GraphNodeSwitchCase *) node;
+        if (gCurGraphNodeHeldObject != NULL) {
+            obj = gCurGraphNodeHeldObject->objNode;
+        }
+
+        // Only allow transparency for hidden blue coins, since other behaviors don't set oOpacity to 255
+        if (obj->behavior == segmented_to_virtual(bhvHiddenBlueCoin) && obj->oOpacity != 255) {
+            switchCase->selectedCase = 1; // transparent
+        } else {
+            switchCase->selectedCase = 0; // alpha
+        }
+    }
+
+    return NULL;
+}
+
+Gfx *geo_update_blue_coin_transparency(s32 callContext, struct GraphNode *node, UNUSED void *context) {
+    Gfx *dlStart = NULL;
+
+    if (callContext == GEO_CONTEXT_RENDER) {
+        struct Object *obj = gCurGraphNodeObjectNode;
+        struct GraphNodeGenerated *currentGraphNode = (struct GraphNodeGenerated *) node;
+        if (gCurGraphNodeHeldObject != NULL) {
+            obj = gCurGraphNodeHeldObject->objNode;
+        }
+
+        SET_GRAPH_NODE_LAYER(currentGraphNode->fnNode.node.flags, LAYER_TRANSPARENT);
+
+        dlStart = alloc_display_list(sizeof(Gfx) * 2);
+        if (dlStart) {
+            Gfx *dlHead = dlStart;
+            gDPSetEnvColor(dlHead++, 255, 255, 255, obj->oOpacity);
+            gSPEndDisplayList(dlHead);
+        }
+    }
+
+    return dlStart;
+}
+#endif
