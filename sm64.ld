@@ -2,8 +2,8 @@ OUTPUT_ARCH (mips)
 
 #define LINKER /* Removes externs from preprocessed script */
 #define TARGET_N64
-#include "segments.h"
-#include "config.h"
+#include "include/segments.h"
+#include "include/config.h"
 #undef LINKER
 
 #define BEGIN_SEG(name, addr) \

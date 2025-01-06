@@ -472,16 +472,18 @@ else ifeq ($(COMPILER),clang)
   CC      := clang
   CXX     := clang++
 endif
-# Prefer gcc's cpp if installed on the system
-ifneq (,$(call find-command,cpp-10))
-  CPP     := cpp-10
+
+ARCH := $(shell uname -p)
+
+# Check processor architecture. ARM users need a different binutils package.
+ifeq ($(ARCH), arm)
+  LD := tools/mips64-elf-ld-arm
 else
-  CPP     := cpp
-endif
-ifneq ($(call find-command,mips-n64-ld),)
-LD        := mips-n64-ld
-else
-LD        := tools/mips64-elf-ld
+  ifneq ($(call find-command,mips-n64-ld),)
+    LD        := mips-n64-ld
+  else
+    LD        := tools/mips64-elf-ld
+  endif
 endif
 AR        := $(CROSS)ar
 OBJDUMP   := $(CROSS)objdump
@@ -507,6 +509,18 @@ endif
 C_DEFINES := $(foreach d,$(DEFINES),-D$(d))
 DEF_INC_CFLAGS := $(foreach i,$(INCLUDE_DIRS),-I$(i)) $(C_DEFINES)
 
+# Prefer gcc's cpp if installed on the system
+ifneq (,$(call find-command,clang))
+  CPP     := clang
+  CPPFLAGS := -E -P -x c -Wno-trigraphs $(DEF_INC_CFLAGS)
+else ifneq (,$(call find-command,cpp-10))
+  CPP     := cpp-10
+  CPPFLAGS := -P -Wno-trigraphs $(DEF_INC_CFLAGS)
+else
+  CPP     := cpp
+  CPPFLAGS := -P -Wno-trigraphs $(DEF_INC_CFLAGS)
+endif
+
 # C compiler options
 CFLAGS = -G 0 $(OPT_FLAGS) $(TARGET_CFLAGS) $(MIPSISET) $(DEF_INC_CFLAGS)
 ifeq ($(COMPILER),gcc)
@@ -524,7 +538,6 @@ ASFLAGS     := -march=vr4300 -mabi=32 $(foreach i,$(INCLUDE_DIRS),-I$(i)) $(fore
 RSPASMFLAGS := $(foreach d,$(DEFINES),-definelabel $(subst =, ,$(d)))
 
 # C preprocessor flags
-CPPFLAGS := -P -Wno-trigraphs $(DEF_INC_CFLAGS)
 
 #==============================================================================#
 # Miscellaneous Tools                                                          #
@@ -650,7 +663,14 @@ unf: $(ROM) $(LOADER_EXEC)
 libultra: $(BUILD_DIR)/libultra.a
 
 patch: $(ROM)
-	$(FLIPS) --create --bps $(shell python3 tools/detect_baseroms.py $(VERSION)) $(ROM) $(BUILD_DIR)/$(TARGET_STRING).bps
+  ifeq ($(shell uname), Darwin)
+    ifeq ($(MAKECMDGOALS), patch)
+      $(error "The 'make patch' command is not supported on macOS.")
+    endif
+  else
+	  $(FLIPS) --create --bps $(shell python3 tools/detect_baseroms.py $(VERSION)) $(ROM) $(BUILD_DIR)/$(TARGET_STRING).bps
+  endif
+
 
 # Extra object file dependencies
 $(BUILD_DIR)/asm/ipl3.o:              $(IPL3_RAW_FILES)

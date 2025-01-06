@@ -1758,6 +1758,15 @@ LZ4HC_FindLongerMatch(LZ4HC_CCtx_internal* const ctx,
     return md;
 }
 
+#ifdef LZ4T
+int LZ4T_lastLiterals (
+    const BYTE** _ip,
+    BYTE** _op,
+    const BYTE** _anchor,
+    limitedOutput_directive limit,
+    BYTE* oend,
+    size_t length);
+#endif
 
 static int LZ4HC_compress_optimal ( LZ4HC_CCtx_internal* ctx,
                                     const char* const source,
@@ -2027,13 +2036,6 @@ _last_literals:
          op += lastRunSize;
      }
 #else
-int LZ4T_lastLiterals (
-    const BYTE** _ip,
-    BYTE** _op,
-    const BYTE** _anchor,
-    limitedOutput_directive limit,
-    BYTE* oend,
-    size_t length);
      LZ4T_lastLiterals(UPDATABLE(ip, op, anchor), limit, oend, (size_t)(iend - anchor));
 #endif
 

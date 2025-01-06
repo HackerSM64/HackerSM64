@@ -1,4 +1,4 @@
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
  #include <byteswap.h>
 #else
 #define __bswap_constant_32(x) \
