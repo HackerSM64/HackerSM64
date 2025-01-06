@@ -73,13 +73,7 @@ extern f32 gSineTable[];
     _x > 0 ? _x : -_x; })
 #define absi ABS
 #define abss ABS
-
-// Absolute value of a float (faster than using the above macro)
-ALWAYS_INLINE f32 absf(f32 in) {
-    f32 out;
-    __asm__("abs.s %0,%1" : "=f" (out) : "f" (in));
-    return out;
-}
+#define absf ABS
 
 // Get the minimum / maximum of a set of numbers
 #undef MIN

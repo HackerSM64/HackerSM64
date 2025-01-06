@@ -135,7 +135,7 @@ endif
 #==============================================================================#
 
 # Default non-gcc opt flags
-DEFAULT_OPT_FLAGS = -Ofast -falign-functions=32
+DEFAULT_OPT_FLAGS = -Ofast -falign-functions=32 -ffinite-math-only -fno-signed-zeros -fno-math-errno
 # Note: -fno-associative-math is used here to suppress warnings, ideally we would enable this as an optimization but
 # this conflicts with -ftrapping-math apparently.
 # TODO: Figure out how to allow -fassociative-math to be enabled
