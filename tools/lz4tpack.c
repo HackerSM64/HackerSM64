@@ -744,7 +744,7 @@ static struct SizedBuffer readFile(const char* filename, int margin)
     fclose(in);
     if (1 != fread_result)
     {
-        printf("Failed to read input file '%s': %d != %d\n", filename, fread_result, size);
+        printf("Failed to read input file '%s': %d != %d\n", filename, (int) fread_result, size);
         abort();
     }
 

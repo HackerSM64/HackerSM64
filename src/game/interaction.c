@@ -1694,11 +1694,7 @@ u32 mario_can_talk(struct MarioState *m, u32 arg) {
 }
 
 #define READ_MASK (INPUT_A_PRESSED | INPUT_B_PRESSED)
-#ifdef EASIER_DIALOG_TRIGGER
 #define SIGN_RANGE DEGREES(90)
-#else
-#define SIGN_RANGE DEGREES(45)
-#endif
 
 u32 check_read_sign(struct MarioState *m, struct Object *obj) {
 #ifdef EASIER_DIALOG_TRIGGER
