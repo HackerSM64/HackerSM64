@@ -3,6 +3,7 @@
 // 0x0800C090
 
 // 0x0800C0A8
+#include "PR/gbi.h"
 ALIGNED8 static const Texture purple_switch_seg8_texture_0800C0A8[] = {
 #include "actors/purple_switch/purple_switch_base.rgba16.inc.c"
 };
@@ -47,11 +48,17 @@ const Gfx purple_switch_seg8_dl_0800C668[] = {
     gsDPLoadBlock(G_TX_LOADTILE, 0, 0, 16 * 4 - 1, CALC_DXT(16, G_IM_SIZ_16b_BYTES)),
     gsSPLightColor(LIGHT_1, 0xffffffff),
     gsSPLightColor(LIGHT_2, 0x3f3f3fff),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPVertex(purple_switch_seg8_vertex_0800C528, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  5, 0x0),
     gsSP2Triangles( 3,  6,  4, 0x0,  7,  8,  9, 0x0),
     gsSP2Triangles( 7, 10,  8, 0x0, 11, 12, 13, 0x0),
     gsSP2Triangles(11, 13, 14, 0x0,  0,  2, 15, 0x0),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };
 

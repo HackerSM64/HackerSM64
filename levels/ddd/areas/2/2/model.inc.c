@@ -132,6 +132,9 @@ static const Gfx ddd_seg7_dl_07007AF0[] = {
     gsDPLoadBlock(G_TX_LOADTILE, 0, 0, 64 * 32 - 1, CALC_DXT(64, G_IM_SIZ_16b_BYTES)),
     gsSPLightColor(LIGHT_1, 0xffffffff),
     gsSPLightColor(LIGHT_2, 0x3f3f3fff),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPVertex(ddd_seg7_vertex_070074E0, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  5, 0x0),
     gsSP2Triangles( 3,  6,  4, 0x0,  7,  8,  9, 0x0),
@@ -162,6 +165,9 @@ static const Gfx ddd_seg7_dl_07007AF0[] = {
     gsSPVertex(ddd_seg7_vertex_07007A80, 7, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  0,  3,  1, 0x0),
     gsSP1Triangle( 4,  5,  6, 0x0),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };
 

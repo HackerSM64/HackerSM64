@@ -137,7 +137,7 @@ typedef u32 OSYieldResult;
  * boundary.  The taskHdrPtr->t.yield_data_ptr must be set to point to the
  * buffer BEFORE the task is started.
  */
-#if	(defined(F3DEX_GBI)||defined(F3DLP_GBI)||defined(F3DEX_GBI_2))
+#if	(defined(F3DEX_GBI)||defined(F3DEX_GBI_2)||defined(F3DEX_GBI_3))
 #define	OS_YIELD_DATA_SIZE		0xc00
 #else
 #define OS_YIELD_DATA_SIZE		0x900

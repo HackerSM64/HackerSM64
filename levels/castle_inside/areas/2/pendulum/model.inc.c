@@ -150,6 +150,9 @@ static const Gfx inside_castle_seg7_dl_07051108[] = {
 static const Gfx inside_castle_seg7_dl_07051170[] = {
     gsSPLightColor(LIGHT_1, 0xac9d52ff),
     gsSPLightColor(LIGHT_2, 0x403a1eff),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPVertex(inside_castle_seg7_vertex_07050B68, 15, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  5, 0x0),
     gsSP2Triangles( 0,  6,  7, 0x0,  0,  2,  8, 0x0),
@@ -177,6 +180,9 @@ static const Gfx inside_castle_seg7_dl_07051170[] = {
     gsSP2Triangles( 0,  1,  2, 0x0,  0,  3,  1, 0x0),
     gsSP2Triangles( 4,  5,  6, 0x0,  4,  7,  5, 0x0),
     gsSP2Triangles( 8,  9, 10, 0x0,  8, 11,  9, 0x0),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };
 

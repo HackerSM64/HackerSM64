@@ -230,6 +230,9 @@ static const Vtx bowser_key_dl_vertex_group12[] = {
 const Gfx bowser_key_dl[] = {
     gsSPLightColor(LIGHT_1, 0xffb200ff),
     gsSPLightColor(LIGHT_2, 0x3f2c00ff),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPVertex(bowser_key_dl_vertex_group1, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  0,  2,  3, 0x0),
     gsSP2Triangles( 4,  5,  6, 0x0,  4,  6,  7, 0x0),
@@ -286,5 +289,8 @@ const Gfx bowser_key_dl[] = {
     gsSP2Triangles(12, 13, 14, 0x0, 12, 14, 15, 0x0),
     gsSPVertex(bowser_key_dl_vertex_group12, 4, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  0,  2, 0x0),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };

@@ -3,6 +3,7 @@
 // 0x0500FE68
 
 // 0x0500FE80
+#include "PR/gbi.h"
 ALIGNED8 static const Texture water_bubble_seg5_texture_0500FE80[] = {
 #include "actors/water_bubble/water_bubble.rgba16.inc.c"
 };
@@ -201,7 +202,11 @@ const Gfx water_bubble_seg5_dl_05010D30[] = {
 // 0x05011000 - 0x05011098
 const Gfx water_bubble_seg5_dl_05011000[] = {
     gsDPPipeSync(),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_TEXTURE_GEN | G_LIGHTING_SPECULAR),
+#else
     gsSPSetGeometryMode(G_TEXTURE_GEN),
+#endif
     gsDPSetCombineMode(G_CC_MODULATERGBFADE, G_CC_MODULATERGBFADE),
     gsDPSetEnvColor(255, 255, 255, 205),
     gsDPLoadTextureBlock(water_bubble_seg5_texture_0500FE80, G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 32, 0, G_TX_WRAP | G_TX_NOMIRROR, G_TX_WRAP | G_TX_NOMIRROR, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
@@ -209,7 +214,11 @@ const Gfx water_bubble_seg5_dl_05011000[] = {
     gsSPDisplayList(water_bubble_seg5_dl_05010D30),
     gsSPTexture(0x07C0, 0x07C0, 0, G_TX_RENDERTILE, G_OFF),
     gsDPPipeSync(),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_TEXTURE_GEN | G_LIGHTING_SPECULAR),
+#else
     gsSPClearGeometryMode(G_TEXTURE_GEN),
+#endif
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsDPSetEnvColor(255, 255, 255, 255),
     gsSPEndDisplayList(),

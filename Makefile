@@ -94,42 +94,6 @@ DEBUG_MAP_STACKTRACE_FLAG := -D DEBUG_MAP_STACKTRACE
 
 TARGET := sm64
 
-
-# GRUCODE - selects which RSP microcode to use.
-#   f3dex   -
-#   f3dex2  -
-#   l3dex2  - F3DEX2 version that only renders in wireframe
-#   f3dzex  - newer, experimental microcode used in Animal Crossing
-#   super3d - extremely experimental version of Fast3D lacking many features for speed
-GRUCODE ?= f3dzex
-$(eval $(call validate-option,GRUCODE,f3dex f3dex2 f3dex2pl f3dzex super3d l3dex2))
-
-ifeq ($(GRUCODE),f3dex) # Fast3DEX
-  DEFINES += F3DEX_GBI=1 F3DEX_GBI_SHARED=1
-else ifeq ($(GRUCODE),f3dex2) # Fast3DEX2
-  DEFINES += F3DEX_GBI_2=1 F3DEX_GBI_SHARED=1
-else ifeq ($(GRUCODE),l3dex2) # Line3DEX2
-  DEFINES += L3DEX2_GBI=1 L3DEX2_ALONE=1 F3DEX_GBI_2=1 F3DEX_GBI_SHARED=1
-else ifeq ($(GRUCODE),f3dex2pl) # Fast3DEX2_PosLight
-  DEFINES += F3DEX2PL_GBI=1 F3DEX_GBI_2=1 F3DEX_GBI_SHARED=1
-else ifeq ($(GRUCODE),f3dzex) # Fast3DZEX (2.08J / Animal Forest - Dōbutsu no Mori)
-  DEFINES += F3DZEX_NON_GBI_2=1 F3DEX_GBI_2=1 F3DEX_GBI_SHARED=1
-else ifeq ($(GRUCODE),super3d) # Super3D
-  $(warning Super3D is experimental. Try at your own risk.)
-  DEFINES += SUPER3D_GBI=1 F3D_NEW=1
-endif
-
-# TEXT ENGINES
-#   s2dex_text_engine - Text Engine by someone2639
-TEXT_ENGINE := none
-$(eval $(call validate-option,TEXT_ENGINE,none s2dex_text_engine))
-
-ifeq ($(TEXT_ENGINE), s2dex_text_engine)
-  DEFINES += S2DEX_GBI_2=1 S2DEX_TEXT_ENGINE=1
-  SRC_DIRS += src/s2d_engine
-endif
-# add more text engines here
-
 #==============================================================================#
 # Optimization flags                                                           #
 #==============================================================================#
@@ -243,15 +207,6 @@ else
   DEFINES += _FINALROM=1 NDEBUG=1 OVERWRITE_OSPRINT=0
 endif
 
-# HVQM - whether to use HVQM fmv library
-#   1 - includes code in ROM
-#   0 - does not
-HVQM ?= 0
-$(eval $(call validate-option,HVQM,0 1))
-ifeq ($(HVQM),1)
-  DEFINES += HVQM=1
-  SRC_DIRS += src/hvqm
-endif
 
 # LIBPL - whether to include libpl library for interfacing with Parallel Launcher
 # (library will be pulled into repo after building with this enabled for the first time)
@@ -421,7 +376,6 @@ O_FILES := $(foreach file,$(C_FILES),$(BUILD_DIR)/$(file:.c=.o)) \
            $(foreach file,$(CPP_FILES),$(BUILD_DIR)/$(file:.cpp=.o)) \
            $(foreach file,$(S_FILES),$(BUILD_DIR)/$(file:.s=.o)) \
            $(foreach file,$(GENERATED_C_FILES),$(file:.c=.o)) \
-           lib/PR/hvqm/hvqm2sp1.o lib/PR/hvqm/hvqm2sp2.o
 
 LIBZ_O_FILES := $(foreach file,$(LIBZ_C_FILES),$(BUILD_DIR)/$(file:.c=.o))
 GODDARD_O_FILES := $(foreach file,$(GODDARD_C_FILES),$(BUILD_DIR)/$(file:.c=.o))
@@ -452,7 +406,7 @@ else
   $(error Unable to detect a suitable MIPS toolchain installed)
 endif
 
-LIBRARIES := nustd hvqm2 z goddard
+LIBRARIES := nustd z goddard
 
 LINK_LIBRARIES = $(foreach i,$(LIBRARIES),-l$(i))
 
@@ -495,7 +449,7 @@ ifeq ($(TARGET_N64),1)
   CC_CFLAGS := -fno-builtin
 endif
 
-INCLUDE_DIRS += include $(BUILD_DIR) $(BUILD_DIR)/include src . include/hvqm
+INCLUDE_DIRS += include $(BUILD_DIR) $(BUILD_DIR)/include src .
 ifeq ($(TARGET_N64),1)
   INCLUDE_DIRS += include/libc
 endif
@@ -596,10 +550,6 @@ endef
 all: $(ROM)
 	@$(SHA1SUM) $(ROM)
 	@$(PRINT) "${BLINK}Build succeeded.\n$(NO_COL)"
-	@$(PRINT) "==== Build Options ====$(NO_COL)\n"
-	@$(PRINT) "${GREEN}Version:        $(BLUE)$(VERSION)$(NO_COL)\n"
-	@$(PRINT) "${GREEN}Microcode:      $(BLUE)$(GRUCODE)$(NO_COL)\n"
-	@$(PRINT) "${GREEN}Console:        $(BLUE)$(CONSOLE)$(NO_COL)\n"
 
 clean:
 	$(RM) -r $(BUILD_DIR_BASE)

@@ -94,3 +94,10 @@
  * Intentionally crash the game whenever a runtime assertion fails (also invoked by the DEBUG define in the Makefile).
  */
 #define DEBUG_ASSERTIONS
+
+/**
+ * Enable F3DEX3 profiling tool. Hold L + C Down to display and cycle through profiler views.
+ * Using pages 2, 3, and 4 can disable certain F3DEX3 features. Read the F3DEX3 README for more information.
+ */
+
+// #define DEBUG_F3DEX3_PROFILER

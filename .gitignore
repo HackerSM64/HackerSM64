@@ -2142,8 +2142,6 @@ lib/libs2d_engine.a
 !/lib/n64/*.a
 !/lib/ique/*.a
 
-!/lib/PR/hvqm/*.o
-
 # .orig files
 *.orig
 

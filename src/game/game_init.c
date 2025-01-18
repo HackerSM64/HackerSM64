@@ -1,5 +1,7 @@
 #include <ultra64.h>
 
+#include "PR/gbi.h"
+#include "config/config_rom.h"
 #include "sm64.h"
 #include "gfx_dimensions.h"
 #include "audio/external.h"
@@ -19,11 +21,11 @@
 #include "segment2.h"
 #include "segment_symbols.h"
 #include "rumble_init.h"
-#ifdef HVQM
-#include <hvqm/hvqm.h>
-#endif
 #ifdef SRAM
 #include "sram.h"
+#endif
+#ifdef F3DEX_GBI_3
+#include "f3dex3.h"
 #endif
 #include "puppyprint.h"
 #include "puppycam2.h"
@@ -33,7 +35,7 @@
 #include "emutest.h"
 
 // Emulators that the Instant Input patch should not be applied to
-#define INSTANT_INPUT_BLACKLIST (EMU_CONSOLE | EMU_WIIVC | EMU_ARES | EMU_SIMPLE64 | EMU_CEN64)
+#define INSTANT_INPUT_BLACKLIST (EMU_CONSOLE | EMU_WIIVC | EMU_ARES | EMU_SIMPLE64 | EMU_CEN64 | DISABLE_INSTANT_INPUT)
 
 // Gfx handlers
 struct SPTask *gGfxSPTask;
@@ -142,16 +144,6 @@ const Gfx init_rsp[] = {
     gsSPEndDisplayList(),
 };
 
-#ifdef S2DEX_TEXT_ENGINE
-void my_rdp_init(void) {
-    gSPDisplayList(gDisplayListHead++, init_rdp);
-}
-
-void my_rsp_init(void) {
-    gSPDisplayList(gDisplayListHead++, init_rsp);
-}
-#endif
-
 /**
  * Initialize the z buffer for the current frame.
  */
@@ -159,19 +151,24 @@ void init_z_buffer(s32 resetZB) {
     Gfx *tempGfxHead = gDisplayListHead;
 
     gDPPipeSync(tempGfxHead++);
-
     gDPSetDepthSource(tempGfxHead++, G_ZS_PIXEL);
     gDPSetDepthImage(tempGfxHead++, gPhysicalZBuffer);
 
-    gDPSetColorImage(tempGfxHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, gPhysicalZBuffer);
-    if (!resetZB)
+    if (!resetZB) {
         return;
+    }
+
+
+#if defined(F3DEX_GBI_3) && defined(F3DEX3_FB_MEMCLEAR)
+    gSPMemset(tempGfxHead++, gPhysicalZBuffer, GPACK_ZDZ(G_MAXFBZ, 0), SCREEN_WIDTH * SCREEN_HEIGHT * 2);
+#else
+    gDPSetColorImage(tempGfxHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, gPhysicalZBuffer);
     gDPSetFillColor(tempGfxHead++,
                     GPACK_ZDZ(G_MAXFBZ, 0) << 16 | GPACK_ZDZ(G_MAXFBZ, 0));
 
     gDPFillRectangle(tempGfxHead++, 0, gBorderHeight, SCREEN_WIDTH - 1,
                      SCREEN_HEIGHT - 1 - gBorderHeight);
-
+#endif
     gDisplayListHead = tempGfxHead;
 }
 
@@ -198,7 +195,9 @@ void select_framebuffer(void) {
  */
 void clear_framebuffer(s32 color) {
     Gfx *tempGfxHead = gDisplayListHead;
-
+#if defined(F3DEX_GBI_3) && defined(F3DEX3_FB_MEMCLEAR)
+    gSPMemset(tempGfxHead++, gPhysicalFramebuffers[sRenderingFramebuffer], color, SCREEN_WIDTH * SCREEN_HEIGHT * 2);
+#else
     gDPPipeSync(tempGfxHead++);
 
     gDPSetRenderMode(tempGfxHead++, G_RM_OPA_SURF, G_RM_OPA_SURF2);
@@ -214,6 +213,7 @@ void clear_framebuffer(s32 color) {
     gDPSetCycleType(tempGfxHead++, G_CYC_1CYCLE);
 
     gDisplayListHead = tempGfxHead;
+#endif
 }
 
 /**
@@ -298,47 +298,41 @@ void create_gfx_task_structure(void) {
     gGfxSPTask->task.t.ucode_boot = rspbootTextStart;
     gGfxSPTask->task.t.ucode_boot_size = ((u8 *) rspbootTextEnd - (u8 *) rspbootTextStart);
     gGfxSPTask->task.t.flags = (OS_TASK_LOADABLE | OS_TASK_DP_WAIT);
-#ifdef  L3DEX2_ALONE
-    gGfxSPTask->task.t.ucode = gspL3DEX2_fifoTextStart;
-    gGfxSPTask->task.t.ucode_data = gspL3DEX2_fifoDataStart;
-    gGfxSPTask->task.t.ucode_size = ((u8 *) gspL3DEX2_fifoTextEnd - (u8 *) gspL3DEX2_fifoTextStart);
-    gGfxSPTask->task.t.ucode_data_size = ((u8 *) gspL3DEX2_fifoDataEnd - (u8 *) gspL3DEX2_fifoDataStart);
-#elif  F3DZEX_GBI_2
-    gGfxSPTask->task.t.ucode = gspF3DZEX2_PosLight_fifoTextStart;
-    gGfxSPTask->task.t.ucode_data = gspF3DZEX2_PosLight_fifoDataStart;
-    gGfxSPTask->task.t.ucode_size = ((u8 *) gspF3DZEX2_PosLight_fifoTextEnd - (u8 *) gspF3DZEX2_PosLight_fifoTextStart);
-    gGfxSPTask->task.t.ucode_data_size = ((u8 *) gspF3DZEX2_PosLight_fifoDataEnd - (u8 *) gspF3DZEX2_PosLight_fifoDataStart);
-#elif  F3DZEX_NON_GBI_2
-    gGfxSPTask->task.t.ucode = gspF3DZEX2_NoN_PosLight_fifoTextStart;
-    gGfxSPTask->task.t.ucode_data = gspF3DZEX2_NoN_PosLight_fifoDataStart;
-    gGfxSPTask->task.t.ucode_size = ((u8 *) gspF3DZEX2_NoN_PosLight_fifoTextEnd - (u8 *) gspF3DZEX2_NoN_PosLight_fifoTextStart);
-    gGfxSPTask->task.t.ucode_data_size = ((u8 *) gspF3DZEX2_NoN_PosLight_fifoDataEnd - (u8 *) gspF3DZEX2_NoN_PosLight_fifoDataStart);
-#elif   F3DEX2PL_GBI
-    gGfxSPTask->task.t.ucode = gspF3DEX2_PosLight_fifoTextStart;
-    gGfxSPTask->task.t.ucode_data = gspF3DEX2_PosLight_fifoDataStart;
-    gGfxSPTask->task.t.ucode_size = ((u8 *) gspF3DEX2_PosLight_fifoTextEnd - (u8 *) gspF3DEX2_PosLight_fifoTextStart);
-    gGfxSPTask->task.t.ucode_data_size = ((u8 *) gspF3DEX2_PosLight_fifoDataEnd - (u8 *) gspF3DEX2_PosLight_fifoDataStart);
-#elif   F3DEX_GBI_2
-    gGfxSPTask->task.t.ucode = gspF3DEX2_fifoTextStart;
-    gGfxSPTask->task.t.ucode_data = gspF3DEX2_fifoDataStart;
-    gGfxSPTask->task.t.ucode_size = ((u8 *) gspF3DEX2_fifoTextEnd - (u8 *) gspF3DEX2_fifoTextStart);
-    gGfxSPTask->task.t.ucode_data_size = ((u8 *) gspF3DEX2_fifoDataEnd - (u8 *) gspF3DEX2_fifoDataStart);
-#elif   F3DEX_GBI
-    gGfxSPTask->task.t.ucode = gspF3DEX_fifoTextStart;
-    gGfxSPTask->task.t.ucode_data = gspF3DEX_fifoDataStart;
-    gGfxSPTask->task.t.ucode_size = ((u8 *) gspF3DEX_fifoTextEnd - (u8 *) gspF3DEX_fifoTextStart);
-    gGfxSPTask->task.t.ucode_data_size = ((u8 *) gspF3DEX_fifoDataEnd - (u8 *) gspF3DEX_fifoDataStart);
-#elif   SUPER3D_GBI
-    gGfxSPTask->task.t.ucode = gspSuper3DTextStart;
-    gGfxSPTask->task.t.ucode_data = gspSuper3DDataStart;
-    gGfxSPTask->task.t.ucode_size = ((u8 *) gspSuper3DTextEnd - (u8 *) gspSuper3DTextStart);
-    gGfxSPTask->task.t.ucode_data_size = ((u8 *) gspSuper3DDataEnd - (u8 *) gspSuper3DDataStart);
+
+#if defined(F3DEX_GBI_3)
+    #if F3DEX_VERSION == 3 // Standard F3DEX3
+        #if defined(DEBUG_F3DEX3_PROFILER)
+            switch (gF3DEX3ProfilerPage) {
+                case 4: GRUCODE_TASK(F3DEX3_BrW_PC); break;
+                case 3: GRUCODE_TASK(F3DEX3_BrW_PB); break;
+                case 2: GRUCODE_TASK(F3DEX3_BrW_PA); break;
+                default: case 1: GRUCODE_TASK(F3DEX3_BrW); break;
+            }
+        #else
+            GRUCODE_TASK(F3DEX3_BrW);
+        #endif
+    #elif F3DEX_VERSION == 4 // F3DEX3 LVP
+        #if defined(DEBUG_F3DEX3_PROFILER)
+            switch (gF3DEX3ProfilerPage) {
+                case 4: GRUCODE_TASK(F3DEX3_BrW_LVP_PC); break;
+                case 3: GRUCODE_TASK(F3DEX3_BrW_LVP_PB); break;
+                case 2: GRUCODE_TASK(F3DEX3_BrW_LVP_PA); break;
+                default: case 1: GRUCODE_TASK(F3DEX3_BrW_LVP); break;
+            }
+        #else
+            GRUCODE_TASK(F3DEX3_BrW_LVP);
+        #endif
+    #else
+        #error "Invalid F3DEX3 selection."
+    #endif
+#elif defined(F3DEX_GBI_2)
+    GRUCODE_TASK(F3DZEX2_NoN_fifo)
+#elif defined(F3DEX_GBI)
+    GRUCODE_TASK(F3DEX_NoN_fifo);
 #else
-    gGfxSPTask->task.t.ucode = gspFast3D_fifoTextStart;
-    gGfxSPTask->task.t.ucode_data = gspFast3D_fifoDataStart;
-    gGfxSPTask->task.t.ucode_size = ((u8 *) gspFast3D_fifoTextEnd - (u8 *) gspFast3D_fifoTextStart);
-    gGfxSPTask->task.t.ucode_data_size = ((u8 *) gspFast3D_fifoDataEnd - (u8 *) gspFast3D_fifoDataStart);
+    #error "Invalid microcode selected."
 #endif
+
     gGfxSPTask->task.t.dram_stack = (u64 *) gGfxSPTaskStack;
     gGfxSPTask->task.t.dram_stack_size = SP_DRAM_STACK_SIZE8;
     gGfxSPTask->task.t.output_buff = gGfxSPTaskOutputBuffer;
@@ -417,7 +411,7 @@ void render_init(void) {
     gDisplayListHead = gGfxPool->buffer;
     gGfxPoolEnd = (u8 *)(gGfxPool->buffer + GFX_POOL_SIZE);
     init_rcp(CLEAR_ZBUFFER);
-    clear_framebuffer(0);
+    clear_framebuffer(0x0001);
     end_master_display_list();
     exec_display_list(&gGfxPool->spTask);
 
@@ -770,9 +764,6 @@ void thread5_game_loop(UNUSED void *arg) {
 #if ENABLE_RUMBLE
     create_thread_6();
 #endif
-#ifdef HVQM
-    createHvqmThread();
-#endif
     save_file_load_all();
 #ifdef PUPPYCAM
     puppycam_boot();
@@ -812,6 +803,9 @@ void thread5_game_loop(UNUSED void *arg) {
         audio_game_loop_tick();
         select_gfx_pool();
         read_controller_inputs(THREAD_5_GAME_LOOP);
+#ifdef DEBUG_F3DEX3_PROFILER
+        query_f3dex3_profiler();
+#endif
         profiler_update(PROFILER_TIME_CONTROLLERS, 0);
         profiler_collision_reset();
         addr = level_script_execute(addr);
@@ -830,12 +824,6 @@ void thread5_game_loop(UNUSED void *arg) {
             // subtract the end of the gfx pool with the display list to obtain the
             // amount of free space remaining.
             print_text_fmt_int(180, 20, "BUF %d", gGfxPoolEnd - (u8 *) gDisplayListHead);
-        }
-#endif
-#if 0
-        if (gPlayer1Controller->buttonPressed & L_TRIG) {
-            osStartThread(&hvqmThread);
-            osRecvMesg(&gDmaMesgQueue, NULL, OS_MESG_BLOCK);
         }
 #endif
     }

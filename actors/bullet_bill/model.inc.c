@@ -3,6 +3,7 @@
 // 0x0500BA90
 
 // 0x0500BAA8
+#include "PR/gbi.h"
 ALIGNED8 static const Texture bullet_bill_seg5_texture_0500BAA8[] = {
 #include "actors/bullet_bill/bullet_bill_eye.rgba16.inc.c"
 };
@@ -334,6 +335,12 @@ const Gfx bullet_bill_seg5_dl_0500E8A8[] = {
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
     gsDPPipeSync(),
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPDisplayList(bullet_bill_seg5_dl_0500E730),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };

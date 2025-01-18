@@ -3,6 +3,7 @@
 // 0x0302A6D8
 
 // 0x0302A6F0
+#include "PR/gbi.h"
 ALIGNED8 static const Texture star_seg3_texture_0302A6F0[] = {
 #include "actors/star/star_surface.rgba16.inc.c"
 };
@@ -49,7 +50,11 @@ const Gfx star_seg3_sub_dl_body[] = {
 // 0x0302B870 - 0x0302B908
 const Gfx star_seg3_dl_body[] = {
     gsDPPipeSync(),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_TEXTURE_GEN | G_LIGHTING_SPECULAR),
+#else
     gsSPSetGeometryMode(G_TEXTURE_GEN),
+#endif
     gsDPSetEnvColor(255, 255, 255, 255),
     gsDPSetCombineMode(G_CC_DECALFADE, G_CC_DECALFADE),
     gsDPLoadTextureBlock(star_seg3_texture_0302A6F0, G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 32, 0, G_TX_WRAP | G_TX_NOMIRROR, G_TX_WRAP | G_TX_NOMIRROR, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
@@ -57,7 +62,11 @@ const Gfx star_seg3_dl_body[] = {
     gsSPDisplayList(star_seg3_sub_dl_body),
     gsDPPipeSync(),
     gsSPTexture(0x07C0, 0x07C0, 0, G_TX_RENDERTILE, G_OFF),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_TEXTURE_GEN | G_LIGHTING_SPECULAR),
+#else
     gsSPClearGeometryMode(G_TEXTURE_GEN),
+#endif
     gsDPSetEnvColor(255, 255, 255, 255),
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsSPEndDisplayList(),

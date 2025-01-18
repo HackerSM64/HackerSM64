@@ -3,6 +3,7 @@
 // 0x0302C488
 
 // 0x0302C4A0
+#include "PR/gbi.h"
 static const Vtx transparent_star_seg3_vertex_body[] = {
     {{{     0,      8,    -89}, 0, {     0,      0}, {0x00, 0x07, 0x82, 0xff}}},
     {{{   190,   -201,      0}, 0, {     0,      0}, {0x55, 0xa3, 0x00, 0xff}}},
@@ -41,7 +42,13 @@ const Gfx transparent_star_seg3_dl_body[] = {
     gsDPPipeSync(),
     gsDPSetCombineMode(G_CC_SHADEFADEA, G_CC_SHADEFADEA),
     gsDPSetEnvColor(255, 255, 255, 120),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPDisplayList(transparent_star_seg3_sub_dl_body),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsDPPipeSync(),
     gsDPSetEnvColor(255, 255, 255, 255),
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),

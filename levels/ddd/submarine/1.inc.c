@@ -9,6 +9,7 @@
 // 0x070092E8 - 0x07009300
 
 // 0x07009300 - 0x07009400
+#include "PR/gbi.h"
 static const Vtx ddd_seg7_vertex_07009300[] = {
     {{{  3923,     20,   4198}, 0, {  7896,  11122}, {0x23, 0x3d, 0x69, 0xff}}},
     {{{  3911,     20,   4198}, 0, {  8392,  11122}, {0xef, 0x44, 0x69, 0xff}}},
@@ -407,6 +408,9 @@ static const Gfx ddd_seg7_dl_0700A600[] = {
     gsDPLoadBlock(G_TX_LOADTILE, 0, 0, 32 * 32 - 1, CALC_DXT(32, G_IM_SIZ_16b_BYTES)),
     gsSPLightColor(LIGHT_1, 0xff7f65ff),
     gsSPLightColor(LIGHT_2, 0x3f1f19ff),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPVertex(ddd_seg7_vertex_07009300, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  5, 0x0),
     gsSP2Triangles( 6,  3,  5, 0x0,  5,  4,  7, 0x0),
@@ -564,6 +568,9 @@ static const Gfx ddd_seg7_dl_0700A600[] = {
     gsSP2Triangles( 8,  4,  6, 0x0,  5,  1,  3, 0x0),
     gsSP2Triangles( 8,  6,  9, 0x0, 10,  8,  9, 0x0),
     gsSP2Triangles(10, 11,  8, 0x0,  5,  7,  1, 0x0),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };
 

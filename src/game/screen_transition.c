@@ -3,15 +3,18 @@
 
 #include "area.h"
 #include "camera.h"
+#include "config/config_rom.h"
 #include "engine/graph_node.h"
 #include "engine/math_util.h"
 #include "game/game_init.h"
+#include "game/ingame_menu.h"
 #include "geo_misc.h"
 #include "gfx_dimensions.h"
 #include "memory.h"
 #include "screen_transition.h"
 #include "segment2.h"
 #include "sm64.h"
+#include "types.h"
 
 u8 sTransitionFadeTimer = 0;
 u16 sTransitionTextureAngle = 0;
@@ -130,7 +133,6 @@ u16 calc_tex_transition_direction(struct WarpTransitionData *transData) {
  */
 s32 render_textured_transition(u8 transTime, struct WarpTransitionData *transData, s8 texID, s8 transTexType) {
     u16 texTransDir = calc_tex_transition_direction(transData);
-
     f32 posDistance = calc_tex_transition_pos_distance(transTime, transData);
     f32 centerTransX = center_tex_transition_x(transData, posDistance, texTransDir);
     f32 centerTransY = center_tex_transition_y(transData, posDistance, texTransDir);
@@ -181,6 +183,15 @@ s32 render_textured_transition(u8 transTime, struct WarpTransitionData *transDat
 
         gDisplayListHead = tempGfxHead;
     }
+
+#if defined(F3DEX_GBI_3) && defined(F3DEX3_FB_MEMCLEAR) // if anyone know why i have to do this please explain
+    if (sTransitionFadeTimer + 1 >= transTime && transData->endTexRadius < transData->startTexRadius) {
+        gSPMemset(gDisplayListHead++, gPhysicalFramebuffers[0], GPACK_RGBA5551(transData->red, transData->green, transData->blue, 1), SCREEN_WIDTH * SCREEN_HEIGHT * 2);
+        gSPMemset(gDisplayListHead++, gPhysicalFramebuffers[1], GPACK_RGBA5551(transData->red, transData->green, transData->blue, 1), SCREEN_WIDTH * SCREEN_HEIGHT * 2);
+        gSPMemset(gDisplayListHead++, gPhysicalFramebuffers[2], GPACK_RGBA5551(transData->red, transData->green, transData->blue, 1), SCREEN_WIDTH * SCREEN_HEIGHT * 2);
+    }
+#endif
+
     return set_and_reset_transition_fade_timer(transTime);
 }
 
@@ -235,12 +246,19 @@ u8 set_transition_color_fade_alpha(s8 fadeType, u8 transTime) {
 
 s32 render_fade_transition_from_color(u8 transTime, struct WarpTransitionData *transData) {
     u8 alpha = set_transition_color_fade_alpha(COLOR_TRANS_FADE_FROM_COLOR, transTime);
-
     return dl_transition_color(transTime, transData, alpha);
 }
 
 s32 render_fade_transition_into_color(u8 transTime, struct WarpTransitionData *transData) {
     u8 alpha = set_transition_color_fade_alpha(COLOR_TRANS_FADE_INTO_COLOR, transTime);
+
+#if defined(F3DEX_GBI_3) && defined(F3DEX3_FB_MEMCLEAR) // if anyone know why i have to do this please explain (ditto)
+    if (alpha == 255) {
+        gSPMemset(gDisplayListHead++, gPhysicalFramebuffers[0], GPACK_RGBA5551(transData->red, transData->green, transData->blue, 1), SCREEN_WIDTH * SCREEN_HEIGHT * 2);
+        gSPMemset(gDisplayListHead++, gPhysicalFramebuffers[1], GPACK_RGBA5551(transData->red, transData->green, transData->blue, 1), SCREEN_WIDTH * SCREEN_HEIGHT * 2);
+        gSPMemset(gDisplayListHead++, gPhysicalFramebuffers[2], GPACK_RGBA5551(transData->red, transData->green, transData->blue, 1), SCREEN_WIDTH * SCREEN_HEIGHT * 2);
+    }
+#endif
 
     return dl_transition_color(transTime, transData, alpha);
 }

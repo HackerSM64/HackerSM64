@@ -13,6 +13,7 @@
 // 0x05001C30
 
 // 0x05001C48
+#include "PR/gbi.h"
 ALIGNED8 static const Texture capswitch_seg5_texture_05001C48[] = {
 #include "actors/capswitch/cap_switch_head.ia16.inc.c"
 };
@@ -112,6 +113,9 @@ const Gfx capswitch_seg5_dl_05003020[] = {
     gsDPLoadBlock(G_TX_LOADTILE, 0, 0, 16 * 4 - 1, CALC_DXT(16, G_IM_SIZ_16b_BYTES)),
     gsSPLightColor(LIGHT_1, 0xffffffff),
     gsSPLightColor(LIGHT_2, 0x3f3f3fff),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPVertex(capswitch_seg5_vertex_05002E60, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  3,  4,  5, 0x0),
     gsSP2Triangles( 4,  6,  5, 0x0,  4,  7,  6, 0x0),
@@ -127,6 +131,9 @@ const Gfx capswitch_seg5_dl_05003020[] = {
     gsSP2Triangles( 3,  5,  7, 0x0,  8,  9, 10, 0x0),
     gsSP2Triangles( 1,  8,  2, 0x0,  1, 11,  8, 0x0),
     gsSP1Triangle( 2,  8, 10, 0x0),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };
 
@@ -168,6 +175,9 @@ static const Vtx capswitch_seg5_vertex_05003180[] = {
 
 // 0x05003280 - 0x05003350
 const Gfx capswitch_seg5_dl_05003280[] = {
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPVertex(capswitch_seg5_vertex_05003180, 16, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  1,  3,  4, 0x0),
     gsSP2Triangles( 1,  0,  3, 0x0,  2,  5,  0, 0x0),
@@ -181,6 +191,9 @@ const Gfx capswitch_seg5_dl_05003280[] = {
     gsSP2Triangles( 6, 14,  7, 0x0, 15,  8, 13, 0x0),
     gsSP2Triangles(13,  8, 14, 0x0, 13, 12, 15, 0x0),
     gsSP2Triangles( 8, 15,  4, 0x0,  7, 14,  8, 0x0),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };
 

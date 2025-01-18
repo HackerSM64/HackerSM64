@@ -3,6 +3,7 @@
 // 0x06012368
 
 // 0x06012380
+#include "PR/gbi.h"
 ALIGNED8 static const Texture water_ring_seg6_texture_06012380[] = {
 #include "actors/water_ring/water_ring.rgba16.inc.c"
 };
@@ -158,7 +159,11 @@ static const Vtx water_ring_seg6_vertex_06013A80[] = {
 // 0x06013AC0 - 0x06013DD8
 const Gfx water_ring_seg6_dl_06013AC0[] = {
     gsDPPipeSync(),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_TEXTURE_GEN | G_LIGHTING_SPECULAR),
+#else
     gsSPSetGeometryMode(G_TEXTURE_GEN),
+#endif
     gsDPSetCombineMode(G_CC_DECALFADE, G_CC_DECALFADE),
     gsDPLoadTextureBlock(water_ring_seg6_texture_06012380, G_IM_FMT_RGBA, G_IM_SIZ_16b, 32, 64, 0, G_TX_WRAP | G_TX_NOMIRROR, G_TX_WRAP | G_TX_NOMIRROR, 5, 6, G_TX_NOLOD, G_TX_NOLOD),
     gsSPTexture(0x07C0, 0x1800, 0, G_TX_RENDERTILE, G_ON),
@@ -209,7 +214,11 @@ const Gfx water_ring_seg6_dl_06013AC0[] = {
     gsSPVertex(water_ring_seg6_vertex_06013A80, 4, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  0,  2,  3, 0x0),
     gsDPPipeSync(),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_TEXTURE_GEN | G_LIGHTING_SPECULAR),
+#else
     gsSPClearGeometryMode(G_TEXTURE_GEN),
+#endif
     gsDPSetEnvColor(255, 255, 255, 255),
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsSPTexture(0x07C0, 0x0F80, 0, G_TX_RENDERTILE, G_OFF),

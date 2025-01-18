@@ -255,15 +255,4 @@ typedef struct {
     u32    paddr;
 } guDLPrintCB;
 
-void guSprite2DInit(uSprite *SpritePointer,   
-		    void *SourceImagePointer,
-		    void *TlutPointer,
-		    int Stride,
-		    int SubImageWidth,
-		    int SubImageHeight,
-		    int SourceImageType,
-		    int SourceImageBitSize,
-		    int SourceImageOffsetS,
-		    int SourceImageOffsetT);
-
 #endif /* !_GU_H_ */

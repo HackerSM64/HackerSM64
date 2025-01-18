@@ -12,6 +12,11 @@
 
 // 0x04000078  # solid color brown 2 - hair - all poly types
 
+#ifdef F3DEX_GBI_3
+#undef G_TEXTURE_GEN
+#define G_TEXTURE_GEN 0x00040000 | G_LIGHTING_SPECULAR
+#endif
+
 // 0x04000090
 ALIGNED8 static const Texture mario_texture_metal[] = {
 #include "actors/mario/mario_metal.rgba16.inc.c"

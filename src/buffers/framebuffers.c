@@ -4,4 +4,4 @@
 #include "framebuffers.h"
 
 // 0x70800 bytes
-RGBA16 gFramebuffers[3][SCREEN_WIDTH * SCREEN_HEIGHT];
+ALIGNED16 RGBA16 gFramebuffers[3][SCREEN_WIDTH * SCREEN_HEIGHT];

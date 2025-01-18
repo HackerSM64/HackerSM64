@@ -1,6 +1,7 @@
 // 0x07007E88 - 0x07007EA0
 
 // 0x07007EA0 - 0x07007F90
+#include "PR/gbi.h"
 static const Vtx cotmc_seg7_vertex_07007EA0[] = {
     {{{   668,    610,  -3991}, 0, {   812,   1550}, {0xca, 0x1f, 0x92, 0xff}}},
     {{{   701,    674,  -3989}, 0, {   828,   1552}, {0xca, 0x1f, 0x92, 0xff}}},
@@ -718,18 +719,30 @@ static const Gfx cotmc_seg7_dl_07009B50[] = {
 // 0x0700A160 - 0x0700A1E0
 const Gfx cotmc_seg7_dl_0700A160[] = {
     gsDPPipeSync(),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_TEXTURE_GEN | G_LIGHTING_SPECULAR),
+#else
     gsSPSetGeometryMode(G_TEXTURE_GEN),
+#endif
     gsDPSetCombineMode(G_CC_MODULATERGB, G_CC_MODULATERGB),
     gsSPClearGeometryMode(G_SHADING_SMOOTH),
     gsDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 0, 0, G_TX_LOADTILE, 0, G_TX_WRAP | G_TX_NOMIRROR, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP | G_TX_NOMIRROR, G_TX_NOMASK, G_TX_NOLOD),
+#ifdef F3DEX_GBI_3
+    gsSPTexture(0x2000, 0x2000, 0, G_TX_RENDERTILE, G_ON),
+#else
     gsSPTexture(0x8000, 0x8000, 0, G_TX_RENDERTILE, G_ON),
+#endif
     gsDPTileSync(),
     gsDPSetTile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 8, 0, G_TX_RENDERTILE, 0, G_TX_WRAP | G_TX_NOMIRROR, 5, G_TX_NOLOD, G_TX_WRAP | G_TX_NOMIRROR, 5, G_TX_NOLOD),
     gsDPSetTileSize(0, 0, 0, (32 - 1) << G_TEXTURE_IMAGE_FRAC, (32 - 1) << G_TEXTURE_IMAGE_FRAC),
     gsSPDisplayList(cotmc_seg7_dl_07009B50),
     gsSPTexture(0x8000, 0x8000, 0, G_TX_RENDERTILE, G_OFF),
     gsDPPipeSync(),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_TEXTURE_GEN | G_LIGHTING_SPECULAR),
+#else
     gsSPClearGeometryMode(G_TEXTURE_GEN),
+#endif
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsSPSetGeometryMode(G_SHADING_SMOOTH),
     gsSPEndDisplayList(),

@@ -1,6 +1,7 @@
 // 0x0704A1B8 - 0x0704A1D0
 
 // 0x0704A1D0 - 0x0704A290
+#include "PR/gbi.h"
 static const Vtx inside_castle_seg7_vertex_0704A1D0[] = {
     {{{  4332,   1408,   3415}, 0, {     0,      0}, {0x81, 0x00, 0x00, 0xff}}},
     {{{  4332,   2125,   2647}, 0, {     0,      0}, {0x81, 0x00, 0x00, 0xff}}},
@@ -31,6 +32,9 @@ static const Gfx inside_castle_seg7_dl_0704A290[] = {
 const Gfx inside_castle_seg7_dl_0704A2E0[] = {
     gsDPPipeSync(),
     gsSPSetGeometryMode(G_TEXTURE_GEN),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsDPSetCombineMode(G_CC_MODULATEIA, G_CC_MODULATEIA),
     gsDPLoadTextureBlock(inside_castle_seg7_texture_light_radial_inverse, G_IM_FMT_IA, G_IM_SIZ_16b, 32, 32, 0, G_TX_WRAP | G_TX_NOMIRROR, G_TX_WRAP | G_TX_NOMIRROR, 5, 5, G_TX_NOLOD, G_TX_NOLOD),
     gsSPTexture(0x07C0, 0x07C0, 0, G_TX_RENDERTILE, G_ON),
@@ -38,6 +42,9 @@ const Gfx inside_castle_seg7_dl_0704A2E0[] = {
     gsSPTexture(0x07C0, 0x07C0, 0, G_TX_RENDERTILE, G_OFF),
     gsDPPipeSync(),
     gsSPClearGeometryMode(G_TEXTURE_GEN),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
     gsSPEndDisplayList(),
 };

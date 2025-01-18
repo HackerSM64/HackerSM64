@@ -1,6 +1,7 @@
 // 0x07051A38 - 0x07051A50
 
 // 0x07051A50 - 0x07051B10
+#include "PR/gbi.h"
 static const Vtx inside_castle_seg7_vertex_07051A50[] = {
     {{{     0,   2611,   7130}, 0, {     0,      0}, {0x72, 0x00, 0xc9, 0x80}}},
     {{{     0,   2253,   7130}, 0, {     0,      0}, {0x72, 0x00, 0xc9, 0x80}}},
@@ -31,7 +32,13 @@ static const Gfx inside_castle_seg7_dl_07051B10[] = {
 const Gfx inside_castle_seg7_dl_07051B60[] = {
     gsDPPipeSync(),
     gsSPClearGeometryMode(G_CULL_BACK | G_SHADING_SMOOTH),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPDisplayList(inside_castle_seg7_dl_07051B10),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPSetGeometryMode(G_CULL_BACK | G_SHADING_SMOOTH),
     gsSPEndDisplayList(),
 };

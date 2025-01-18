@@ -1,6 +1,7 @@
 // Bobomb
 
 // 0x0801DA60
+#include "PR/gbi.h"
 ALIGNED8 static const Texture bobomb_seg8_texture_0801DA60[] = {
 #include "actors/bobomb/bob-omb_left_side.rgba16.inc.c"
 };
@@ -313,8 +314,14 @@ const Gfx bobomb_seg8_dl_08023378[] = {
 
 // 0x08023480 - 0x08023528
 const Gfx bobomb_seg8_dl_08023480[] = {
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+    gsSPLightColor(LIGHT_1, 0xc2c2c2ff),
+    gsSPLightColor(LIGHT_2, 0x3c3c3cff),
+#else
     gsSPLightColor(LIGHT_1, 0xb2b2b2ff),
     gsSPLightColor(LIGHT_2, 0x2c2c2cff),
+#endif
     gsSPVertex(bobomb_seg8_vertex_080230B0, 14, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  0,  2,  3, 0x0),
     gsSP2Triangles( 4,  0,  3, 0x0,  4,  3,  5, 0x0),
@@ -325,5 +332,8 @@ const Gfx bobomb_seg8_dl_08023480[] = {
     gsSP2Triangles( 4,  5,  6, 0x0,  4,  6,  7, 0x0),
     gsSP2Triangles( 8,  9, 10, 0x0,  8, 10, 11, 0x0),
     gsSP2Triangles( 8, 11, 12, 0x0,  8, 12, 13, 0x0),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };

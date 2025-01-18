@@ -325,6 +325,9 @@ static const Gfx ddd_seg7_dl_07006E20[] = {
     gsDPLoadBlock(G_TX_LOADTILE, 0, 0, 64 * 32 - 1, CALC_DXT(64, G_IM_SIZ_16b_BYTES)),
     gsSPLightColor(LIGHT_1, 0xff),
     gsSPLightColor(LIGHT_2, 0xff),
+#ifdef F3DEX_GBI_3
+    gsSPSetGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPVertex(ddd_seg7_vertex_07006040, 4, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  0,  2,  3, 0x0),
     gsSPLightColor(LIGHT_1, 0x444444ff),
@@ -339,6 +342,9 @@ static const Gfx ddd_seg7_dl_07006E20[] = {
     gsSPLightColor(LIGHT_2, 0x444444ff),
     gsSPVertex(ddd_seg7_vertex_07006100, 4, 0),
     gsSP2Triangles( 0,  1,  2, 0x0,  0,  2,  3, 0x0),
+#ifdef F3DEX_GBI_3
+    gsSPClearGeometryMode(G_LIGHTING_SPECULAR),
+#endif
     gsSPEndDisplayList(),
 };
 

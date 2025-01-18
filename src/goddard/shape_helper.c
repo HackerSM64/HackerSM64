@@ -1205,7 +1205,11 @@ void animate_mario_head_normal(struct ObjAnimator *self) {
     switch (self->state) {
         case 0:
             // initialize?
+#ifdef F3DEX_GBI_3 // Fix bad looking intro due to far clip plane removal
+            self->frame = 14.0f;
+#else
             self->frame = 1.0f;
+#endif
             self->animSeqNum = 0;  // normal anim sequence
             state = 2;
             self->nods = 5;

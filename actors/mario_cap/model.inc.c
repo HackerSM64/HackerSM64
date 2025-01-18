@@ -7,6 +7,12 @@
 // 0x0301CF38
 
 // 0x0301CF50
+
+#ifdef F3DEX_GBI_3
+#undef G_TEXTURE_GEN
+#define G_TEXTURE_GEN 0x00040000 | G_LIGHTING_SPECULAR
+#endif
+
 ALIGNED8 static const Texture mario_cap_seg3_texture_0301CF50[] = {
 #include "actors/mario_cap/mario_cap_metal.rgba16.inc.c"
 };

@@ -79,6 +79,7 @@ const LevelScript level_intro_splash_screen[] = {
 #endif
     UNLOAD_AREA(/*area*/ 1),
     CLEAR_LEVEL(),
+    BLACKOUT(/*active*/ TRUE),
     SLEEP(/*frames*/ 2),
     EXIT_AND_EXECUTE_WITH_CODE(/*seg*/ SEGMENT_MENU_INTRO, _introSegmentRomStart, _introSegmentRomEnd, level_intro_mario_head_regular, _introSegmentBssStart, _introSegmentBssEnd),
 };
@@ -98,11 +99,12 @@ const LevelScript level_intro_mario_head_regular[] = {
     FREE_LEVEL_POOL(),
 
     SLEEP(/*frames*/ 2),
-    BLACKOUT(/*active*/ FALSE),
-    LOAD_AREA(/*area*/ 1),
     SET_MENU_MUSIC(/*seq*/ SEQ_MENU_TITLE_SCREEN),
+    LOAD_AREA(/*area*/ 1),
     TRANSITION(/*transType*/ WARP_TRANSITION_FADE_FROM_STAR, /*time*/ 20, /*color*/ 0x00, 0x00, 0x00),
-    SLEEP(/*frames*/ 20),
+    SLEEP(/*frames*/ 2),
+    BLACKOUT(/*active*/ FALSE),
+
 #else
     PUSH_POOL(),
     BLACKOUT(/*active*/ FALSE),
